@@ -53,6 +53,7 @@
 - 模型权重：0；运行期用户数据：0；`Updater/EchoMinutes.Updater.exe` 存在。
 - `MeetingTransfer.App.dll` SHA256：`5655D2CB9BCD5EDC9A5E6F43BD5857C20D822AD0A43CDEFCB4785CBB210A232A`。
 - 本机对 GitHub 的应用内实网检查遇到 SSL 连接错误；失败状态和提示已验证，不影响启动。核心 Release 解析、下载、哈希与安装流程由自动化和端到端本地探针验证。
+- GitHub 初始推送成功：远端 `main` 已建立，20 个 Git LFS 运行时对象（约 260 MB）与源码提交均已上传。
 
 ## 执行命令
 
@@ -64,6 +65,10 @@ dotnet test MeetingTransfer.sln -c Release --no-build --no-restore -p:NuGetAudit
 dotnet format MeetingTransfer.sln --verify-no-changes --no-restore --severity warn
 dotnet publish src\MeetingTransfer.App\MeetingTransfer.App.csproj -c Release -r win-x64 --self-contained false --no-restore -p:NuGetAudit=false -o publish\win-x64
 git -c http.proxy= -c https.proxy= ls-remote https://github.com/luckykevvv/echo-minutes.git
+git lfs install --local
+git lfs track "third_party/**/*.dll" "third_party/**/*.exe"
+git commit -m "feat: initial EchoMinutes release"
+git -c http.proxy= -c https.proxy= -c http.version=HTTP/1.1 -c http.lowSpeedLimit=0 push -u origin main
 ```
 
 正式发布前均先解析并检查目标绝对路径位于工作区，再清理旧 `publish/win-x64`。更新器探针在 `%TEMP%` 的唯一目录中运行，并在校验后安全清理。
