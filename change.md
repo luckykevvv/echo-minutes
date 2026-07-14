@@ -40,6 +40,7 @@
 - GitHub Actions YAML：PyYAML 解析通过。
 - Inno Setup 脚本关键 section、每用户安装路径、固定输出文件名和最低权限均已静态核对。
 - 当前机器未预装 Inno Setup；最终安装器编译由 Windows GitHub Actions 执行并通过实际 Release 资产验收。
+- 第一次 `v1.0.0` Actions 暴露 `.gitignore` 回归：通用 `models/` 规则误排除了 `src/MeetingTransfer.Core/Models`。已改为仅忽略根目录 `/models/`，并单独忽略 `third_party` 模型权重；漏掉的四个模型目录源码已加入仓库。
 
 ## 执行命令
 

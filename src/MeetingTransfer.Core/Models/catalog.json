@@ -1,0 +1,254 @@
+﻿{
+    "version":  1,
+    "models":  [
+                   {
+                       "id":  "whisper-tiny.en",
+                       "family":  "Whisper.cpp",
+                       "displayName":  "Whisper tiny.en (GGML, English)",
+                       "sizeBytes":  75600000,
+                       "languages":  [
+                                         "en"
+                                     ],
+                       "task":  "transcribe",
+                       "executionMode":  "offline",
+                       "description":  "Smallest English-only whisper.cpp model. Best for quick English drafts when speed matters more than accuracy. Runs through the included Vulkan runtime on AMD, Intel, and NVIDIA GPUs on Windows.",
+                       "speedNote":  "Very fast. ~32x real-time on GPU (Vulkan). Roughly 8-10x slower on CPU fallback.",
+                       "accuracyNote":  "Lowest Whisper accuracy. Not suitable for Chinese or bilingual meetings.",
+                       "engine":  "whisper.cpp",
+                       "executable":  "models/whisper-cpp-vulkan/whisper-cli.exe",
+                       "files":  [
+                                     {
+                                         "name":  "ggml-tiny.en.bin",
+                                         "url":  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin",
+                                         "sha256":  null,
+                                         "extract":  null
+                                     }
+                                 ],
+                       "argumentsTemplate":  "-m \"{Model}\" -f \"{InputWav}\" -l {Language} -t 4 -dev 0 -nfa -bs 1 -bo 1 -nt -np",
+                       "backend":  "GPU"
+                   },
+                   {
+                       "id":  "whisper-base",
+                       "family":  "Whisper.cpp",
+                       "displayName":  "Whisper base (GGML, multilingual)",
+                       "sizeBytes":  145000000,
+                       "languages":  [
+                                         "zh",
+                                         "en",
+                                         "bilingual"
+                                     ],
+                       "task":  "transcribe",
+                       "executionMode":  "offline",
+                       "description":  "Small multilingual whisper.cpp model. A compact option for Chinese, English, and mixed-language drafts. Runs through the included Vulkan runtime on AMD, Intel, and NVIDIA GPUs on Windows.",
+                       "speedNote":  "Fast. ~20x real-time on GPU (Vulkan). Roughly 8-10x slower on CPU fallback.",
+                       "accuracyNote":  "Acceptable for clean speech, but weaker on long meetings, noise, accents, and code-switching.",
+                       "engine":  "whisper.cpp",
+                       "executable":  "models/whisper-cpp-vulkan/whisper-cli.exe",
+                       "files":  [
+                                     {
+                                         "name":  "ggml-base.bin",
+                                         "url":  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
+                                         "sha256":  null,
+                                         "extract":  null
+                                     }
+                                 ],
+                       "argumentsTemplate":  "-m \"{Model}\" -f \"{InputWav}\" -l {Language} -t 4 -dev 0 -nfa -bs 1 -bo 1 -nt -np",
+                       "backend":  "GPU"
+                   },
+                   {
+                       "id":  "whisper-small",
+                       "family":  "Whisper.cpp",
+                       "displayName":  "Whisper small (GGML, multilingual)",
+                       "sizeBytes":  470000000,
+                       "languages":  [
+                                         "zh",
+                                         "en",
+                                         "bilingual"
+                                     ],
+                       "task":  "transcribe",
+                       "executionMode":  "offline",
+                       "description":  "Mid-size multilingual whisper.cpp model. Better accuracy than base while remaining much smaller than large-v3-turbo. Runs through the included Vulkan runtime on AMD, Intel, and NVIDIA GPUs on Windows.",
+                       "speedNote":  "Moderate. ~5x real-time on GPU (Vulkan). Roughly 8-10x slower on CPU fallback.",
+                       "accuracyNote":  "Good for everyday Chinese-English audio, but not as robust as large-v3-turbo.",
+                       "engine":  "whisper.cpp",
+                       "executable":  "models/whisper-cpp-vulkan/whisper-cli.exe",
+                       "files":  [
+                                     {
+                                         "name":  "ggml-small.bin",
+                                         "url":  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
+                                         "sha256":  null,
+                                         "extract":  null
+                                     }
+                                 ],
+                       "argumentsTemplate":  "-m \"{Model}\" -f \"{InputWav}\" -l {Language} -t 4 -dev 0 -nfa -bs 1 -bo 1 -nt -np",
+                       "backend":  "GPU"
+                   },
+                   {
+                       "id":  "whisper-large-v3-turbo",
+                       "family":  "Whisper.cpp",
+                       "displayName":  "Whisper large-v3 turbo (GGML, Vulkan)",
+                       "sizeBytes":  1624555275,
+                       "languages":  [
+                                         "zh",
+                                         "en",
+                                         "bilingual"
+                                     ],
+                       "task":  "transcribe",
+                       "executionMode":  "offline",
+                       "description":  "Recommended whisper.cpp model for offline file transcription. Download it from Settings after installation. Runs through Vulkan on AMD, Intel, and NVIDIA GPUs and provides strong multilingual and Chinese-English code-switched accuracy.",
+                       "speedNote":  "~0.05-0.1x real-time on GPU (Vulkan, 5 min audio takes ~30 s). Roughly 5-10x slower on CPU fallback.",
+                       "accuracyNote":  "SOTA multilingual accuracy for Chinese-English content. Recommended default for imported meetings on GPU.",
+                       "engine":  "whisper.cpp",
+                       "executable":  "models/whisper-cpp-vulkan/whisper-cli.exe",
+                       "files":  [
+                                     {
+                                         "name":  "ggml-large-v3-turbo.bin",
+                                         "url":  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin",
+                                         "sha256":  "1FC70F774D38EB169993AC391EEA357EF47C88757EF72EE5943879B7E8E2BC69",
+                                         "extract":  null
+                                     }
+                                 ],
+                       "argumentsTemplate":  "-m \"{Model}\" -f \"{InputWav}\" -l {Language} -t 4 -dev 0 -nfa -bs 1 -bo 1 -nt -np",
+                       "backend":  "GPU"
+                   },
+                   {
+                       "id":  "sense-voice-small",
+                       "family":  "SenseVoice",
+                       "displayName":  "SenseVoice Small (Alibaba, multilingual)",
+                       "sizeBytes":  230000000,
+                       "languages":  [
+                                         "zh",
+                                         "en",
+                                         "ja",
+                                         "ko",
+                                         "yue"
+                                     ],
+                       "task":  "transcribe",
+                       "executionMode":  "offline",
+                       "description":  "Alibaba SenseVoice-Small. Outputs emotion, event, and language ID tags in addition to text. Chinese and Cantonese accuracy rivals Whisper large-v3. Limited language coverage — no French, German, Russian, etc. CPU only in this build (sherpa-onnx DML on AMD is not yet wired in).",
+                       "speedNote":  "CPU only: ~10x real-time. GPU acceleration requires a self-built sherpa-onnx with DirectML.",
+                       "accuracyNote":  "SOTA on Chinese and Cantonese. Weaker on long English-only content than Whisper large-v3.",
+                       "engine":  "sherpa-onnx",
+                       "executable":  "models/sherpa-onnx/bin/sherpa-onnx-offline.exe",
+                       "files":  [
+                                     {
+                                         "name":  "model.onnx",
+                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/model.onnx",
+                                         "sha256":  null
+                                     },
+                                     {
+                                         "name":  "tokens.txt",
+                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/tokens.txt",
+                                         "sha256":  null
+                                     }
+                                 ],
+                       "argumentsTemplate":  "--sense-voice-model=\"{Model}\" --tokens=\"{Tokens}\" --sense-voice-language=auto --sense-voice-use-itn=true --num-threads=2 \"{InputWav}\"",
+                       "backend":  "CPU"
+                   },
+                   {
+                       "id":  "paraformer-large-zh",
+                       "family":  "Paraformer",
+                       "displayName":  "Paraformer-large (Chinese only)",
+                       "sizeBytes":  1000000000,
+                       "languages":  [
+                                         "zh"
+                                     ],
+                       "task":  "transcribe",
+                       "executionMode":  "offline",
+                       "description":  "Alibaba FunASR Paraformer-large. Chinese-only offline ASR. Strong punctuation, ITN, and number normalization out of the box. Will refuse or mis-transcribe English content. CPU only in this build (sherpa-onnx DML on AMD is not yet wired in).",
+                       "speedNote":  "CPU only: ~3x real-time. GPU acceleration requires a self-built sherpa-onnx with DirectML.",
+                       "accuracyNote":  "Excellent for pure Chinese. Not suitable for code-switched or English content.",
+                       "engine":  "sherpa-onnx",
+                       "executable":  "models/sherpa-onnx/bin/sherpa-onnx-offline.exe",
+                       "files":  [
+                                     {
+                                         "name":  "model.onnx",
+                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14/resolve/main/model.onnx",
+                                         "sha256":  null
+                                     },
+                                     {
+                                         "name":  "tokens.txt",
+                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14/resolve/main/tokens.txt",
+                                         "sha256":  null
+                                     }
+                                 ],
+                       "argumentsTemplate":  "--paraformer=\"{Model}\" --tokens=\"{Tokens}\" --num-threads=2 \"{InputWav}\"",
+                       "backend":  "CPU"
+                   },
+                   {
+                       "id":  "streaming-paraformer-bilingual",
+                       "family":  "Paraformer (streaming)",
+                       "displayName":  "Paraformer streaming (bilingual zh/en, real-time)",
+                       "sizeBytes":  237846355,
+                       "languages":  [
+                                         "zh",
+                                         "en"
+                                     ],
+                       "task":  "transcribe",
+                       "executionMode":  "online",
+                       "description":  "Required download for the real-time recording path. Lower accuracy than offline Whisper/SenseVoice but produces partial segments every few seconds so the UI can render live transcript. CPU only in this build.",
+                       "speedNote":  "CPU only: streaming, sub-second latency per chunk.",
+                       "accuracyNote":  "Acceptable for live preview; final pass should be re-transcribed offline with a stronger model.",
+                       "engine":  "sherpa-onnx",
+                       "executable":  "models/sherpa-onnx/bin/sherpa-onnx-vad-with-online-asr.exe",
+                       "files":  [
+                                     {
+                                         "name":  "encoder.int8.onnx",
+                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/main/encoder.int8.onnx",
+                                         "sha256":  "81A70226A8934E6ED92AA1D4FC486B428B5398E2F2619ED4897B7294CAB90E9A"
+                                     },
+                                     {
+                                         "name":  "decoder.int8.onnx",
+                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/main/decoder.int8.onnx",
+                                         "sha256":  "F3CCA9F77BB9D93C8FCBFB63AE617B6B1EE96818DF3AA3B151C40658FE38594F"
+                                     },
+                                     {
+                                         "name":  "tokens.txt",
+                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/main/tokens.txt",
+                                         "sha256":  "59ABA8873A2ED1E122C25FEE421E25F283B63290EFBDE85C1F01A853D83CB6E6"
+                                     },
+                                     {
+                                         "name":  "silero_vad.onnx",
+                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-silero-vad/resolve/main/silero_vad.onnx",
+                                         "sha256":  "9E2449E1087496D8D4CABA907F23E0BD3F78D91FA552479BB9C23AC09CBB1FD6"
+                                     }
+                                 ],
+                       "argumentsTemplate":  "--silero-vad-model=\"{SileroVadModel}\" --tokens=\"{Tokens}\" --paraformer-encoder=\"{Encoder}\" --paraformer-decoder=\"{Decoder}\" --num-threads=2 --blank-penalty=1.0 \"{InputWav}\"",
+                       "backend":  "CPU"
+                   },
+                   {
+                       "id":  "speaker-diarization",
+                       "family":  "Speaker diarization",
+                       "displayName":  "Speaker diarization (pyannote + 3D-Speaker)",
+                       "sizeBytes":  41134267,
+                       "languages":  [
+                                         "multilingual"
+                                     ],
+                       "task":  "diarize",
+                       "executionMode":  "resource",
+                       "description":  "Required download for assigning Speaker 1, Speaker 2, and so on to imported recordings. Includes pyannote segmentation and a 3D-Speaker ERes2Net embedding model.",
+                       "speedNote":  "CPU post-processing after offline transcription.",
+                       "accuracyNote":  "Speaker turns are clustered from voice embeddings; text at rapid speaker boundaries remains approximate.",
+                       "engine":  "sherpa-onnx",
+                       "executable":  "models/sherpa-onnx/bin/sherpa-onnx-offline-speaker-diarization.exe",
+                       "files":  [
+                                     {
+                                         "name":  "model.int8.onnx",
+                                         "url":  "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2",
+                                         "sha256":  "D582F4B4C6B48205DE7E0643C57DF0DF5615A3C176189BE3FC461E9D18827B5D",
+                                         "extract":  {
+                                                         "format":  "tar.bz2",
+                                                         "member":  "sherpa-onnx-pyannote-segmentation-3-0/model.int8.onnx"
+                                                     }
+                                     },
+                                     {
+                                         "name":  "eres2net.onnx",
+                                         "url":  "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx",
+                                         "sha256":  "1A331345F04805BADBB495C775A6DDFFCDD1A732567D5EC8B3D5749E3C7A5E4B"
+                                     }
+                                 ],
+                       "argumentsTemplate":  "",
+                       "backend":  "CPU"
+                   }
+               ]
+}
