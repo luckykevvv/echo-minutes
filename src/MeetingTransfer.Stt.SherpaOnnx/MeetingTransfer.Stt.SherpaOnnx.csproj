@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MeetingTransfer.Core\MeetingTransfer.Core.csproj" />
+    <ProjectReference Include="..\MeetingTransfer.Stt\MeetingTransfer.Stt.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MeetingTransfer.Tests" />
+  </ItemGroup>
+</Project>

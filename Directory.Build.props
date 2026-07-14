@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Authors>Meeting Transfer contributors</Authors>
+    <Product>Meeting Transfer</Product>
+  </PropertyGroup>
+</Project>

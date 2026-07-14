@@ -1,0 +1,23 @@
+{
+  "SherpaOnnx": {
+    "OnlineRecognizerExecutable": "models/sherpa-onnx/bin/sherpa-onnx-vad-with-online-asr.exe",
+    "OfflineRecognizerExecutable": "models/sherpa-onnx/bin/sherpa-onnx.exe",
+    "OnlineArgumentsTemplate": "--silero-vad-model=\"{SileroVadModel}\" --tokens=\"{Tokens}\" --paraformer-encoder=\"{Encoder}\" --paraformer-decoder=\"{Decoder}\" --num-threads=2 --blank-penalty=1.0 \"{InputWav}\"",
+    "OfflineArgumentsTemplate": "--tokens=\"{Tokens}\" --paraformer-encoder=\"{Encoder}\" --paraformer-decoder=\"{Decoder}\" --num-threads=2 \"{InputWav}\"",
+    "Tokens": null,
+    "Encoder": null,
+    "Decoder": null,
+    "Joiner": null,
+    "SileroVadModel": null,
+    "WhisperCppExecutable": "models/whisper-cpp-vulkan/whisper-cli.exe",
+    "WhisperCppModel": null,
+    "WhisperCppArgumentsTemplate": "-m \"{Model}\" -f \"{InputWav}\" -l {Language} -t 4 -dev 0 -nfa -bs 1 -bo 1 -nt -np",
+    "WhisperCppLanguage": "bilingual",
+    "SpeakerDiarizationExecutable": "models/sherpa-onnx/bin/sherpa-onnx-offline-speaker-diarization.exe",
+    "PyannoteSegmentationModel": null,
+    "SpeakerEmbeddingModel": null,
+    "DiarizationClusterCount": -1,
+    "DiarizationClusterThreshold": 0.9
+  },
+  "ActiveModelId": null
+}

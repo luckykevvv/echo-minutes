@@ -1,0 +1,52 @@
+bin/
+obj/
+.vs/
+.vscode/
+.codex/
+.agents/
+TestResults/
+*.user
+*.suo
+*.log
+
+# Local runtime data
+data/
+exports/
+models/
+recordings/
+
+# Local private configuration
+appsettings.json
+models.json
+*.local.json
+
+# Build output
+publish/
+dist/
+
+# Download cache for bundled third-party assets
+third_party/downloads/
+third_party/ffmpeg/presets/
+third_party/sherpa-onnx/include/
+
+# Keep only the runtime files used by the published application.
+third_party/sherpa-onnx/lib/
+!third_party/sherpa-onnx/bin/
+third_party/sherpa-onnx/bin/*
+!third_party/sherpa-onnx/bin/onnxruntime.dll
+!third_party/sherpa-onnx/bin/onnxruntime_providers_shared.dll
+!third_party/sherpa-onnx/bin/sherpa-onnx-vad-with-online-asr.exe
+!third_party/sherpa-onnx/bin/sherpa-onnx-offline.exe
+!third_party/sherpa-onnx/bin/sherpa-onnx-offline-speaker-diarization.exe
+third_party/whisper-cpp-vulkan/*
+!third_party/whisper-cpp-vulkan/ggml-base.dll
+!third_party/whisper-cpp-vulkan/ggml-cpu.dll
+!third_party/whisper-cpp-vulkan/ggml-vulkan.dll
+!third_party/whisper-cpp-vulkan/ggml.dll
+!third_party/whisper-cpp-vulkan/whisper.dll
+!third_party/whisper-cpp-vulkan/whisper-cli.exe
+!third_party/ffmpeg/bin/
+third_party/ffmpeg/bin/*
+!third_party/ffmpeg/bin/*.dll
+!third_party/ffmpeg/bin/ffmpeg.exe
+!third_party/ffmpeg/bin/ffprobe.exe

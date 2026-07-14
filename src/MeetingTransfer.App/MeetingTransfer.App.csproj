@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MeetingTransfer.Audio\MeetingTransfer.Audio.csproj" />
+    <ProjectReference Include="..\MeetingTransfer.Core\MeetingTransfer.Core.csproj" />
+    <ProjectReference Include="..\MeetingTransfer.Stt\MeetingTransfer.Stt.csproj" />
+    <ProjectReference Include="..\MeetingTransfer.Stt.SherpaOnnx\MeetingTransfer.Stt.SherpaOnnx.csproj" />
+  </ItemGroup>
+  <PropertyGroup>
+    <UpdaterPublishDirectory>$(MSBuildProjectDirectory)\..\MeetingTransfer.Updater\obj\echo-minutes-updater\$(Configuration)\$(RuntimeIdentifier)\</UpdaterPublishDirectory>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\appsettings.example.json" Link="appsettings.example.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\models.example.json" Link="models.example.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\MeetingTransfer.Core\Models\catalog.json" Link="Models\catalog.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Ship only runtime assets used by the app. The upstream archives also
+         contain development libraries, servers, benchmarks and sample audio. -->
+    <None Include="..\..\third_party\sherpa-onnx\bin\onnxruntime*.dll;..\..\third_party\sherpa-onnx\bin\sherpa-onnx-vad-with-online-asr.exe;..\..\third_party\sherpa-onnx\bin\sherpa-onnx-offline.exe;..\..\third_party\sherpa-onnx\bin\sherpa-onnx-offline-speaker-diarization.exe"
+          Link="models\sherpa-onnx\bin\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\third_party\whisper-cpp-vulkan\ggml*.dll;..\..\third_party\whisper-cpp-vulkan\whisper.dll;..\..\third_party\whisper-cpp-vulkan\whisper-cli.exe"
+          Link="models\whisper-cpp-vulkan\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\third_party\ffmpeg\bin\*.dll;..\..\third_party\ffmpeg\bin\ffmpeg.exe;..\..\third_party\ffmpeg\bin\ffprobe.exe"
+          Link="models\ffmpeg\bin\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="PublishEchoMinutesUpdater" AfterTargets="Publish" Condition="'$(DesignTimeBuild)' != 'true'">
+    <RemoveDir Directories="$(UpdaterPublishDirectory)" />
+    <MSBuild Projects="..\MeetingTransfer.Updater\MeetingTransfer.Updater.csproj"
+             Targets="Restore;Publish"
+             Properties="Configuration=$(Configuration);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=false;PublishDir=$(UpdaterPublishDirectory)" />
+    <ItemGroup>
+      <EchoMinutesUpdaterFile Include="$(UpdaterPublishDirectory)**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(EchoMinutesUpdaterFile)"
+          DestinationFiles="@(EchoMinutesUpdaterFile->'$(PublishDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+</Project>
