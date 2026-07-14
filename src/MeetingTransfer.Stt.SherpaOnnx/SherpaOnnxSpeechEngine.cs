@@ -1684,8 +1684,10 @@ public sealed partial class SherpaOnnxSpeechEngine : ISpeechEngine
         }
 
         // 2. JSON { "text": "..." } lines (offline recognizer).
-        foreach (var line in trimmed.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).Reverse())
+        var jsonCandidateLines = trimmed.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        for (var lineIndex = jsonCandidateLines.Length - 1; lineIndex >= 0; lineIndex--)
         {
+            var line = jsonCandidateLines[lineIndex];
             var lineTrimmed = line.Trim();
             if (!lineTrimmed.StartsWith('{'))
             {
