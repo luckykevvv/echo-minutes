@@ -42,6 +42,7 @@
 - 当前机器未预装 Inno Setup；最终安装器编译由 Windows GitHub Actions 执行并通过实际 Release 资产验收。
 - 第一次 `v1.0.0` Actions 暴露 `.gitignore` 回归：通用 `models/` 规则误排除了 `src/MeetingTransfer.Core/Models`。已改为仅忽略根目录 `/models/`，并单独忽略 `third_party` 模型权重；漏掉的四个模型目录源码已加入仓库。
 - 第二次 Actions 暴露 SDK 可移植性问题：CI 将数组 `.Reverse()` 绑定为返回 `void` 的原地反转。已改为显式倒序索引循环，避免不同 .NET 8 SDK 的重载解析差异。
+- 第三次 Actions 的 build/test 已通过，publish 暴露 `NETSDK1047`：通用 restore 没有生成 `win-x64` 目标，且 runner 默认选中了预装 SDK 10。已新增 `global.json` 锁定 .NET SDK 8.0.422，并在 publish 前显式执行 App 的 `-r win-x64` restore。
 
 ## 执行命令
 

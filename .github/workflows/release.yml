@@ -18,7 +18,7 @@ jobs:
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 8.0.422
 
       - name: Restore
         run: dotnet restore MeetingTransfer.sln
@@ -34,6 +34,8 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
+          dotnet restore src/MeetingTransfer.App/MeetingTransfer.App.csproj `
+            -r win-x64 -p:Version=$version
           dotnet publish src/MeetingTransfer.App/MeetingTransfer.App.csproj `
             -c Release -r win-x64 --self-contained false --no-restore `
             -p:Version=$version -o artifacts/publish
