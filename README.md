@@ -23,8 +23,8 @@ Meeting Transfer 1.0.0 是一款 Windows 本地会议录音、实时转写与离
 
 ## 快速开始
 
-1. 将发布包解压到当前用户可写目录，不要直接放入需要管理员权限写入的 `Program Files`。
-2. 运行 `MeetingTransfer.App.exe`。
+1. 推荐从 GitHub Release 下载并运行 `echo-minutes-setup-x64.exe`。安装器默认安装到当前用户的 `%LocalAppData%\Programs\EchoMinutes`，不需要管理员权限，并创建开始菜单入口。
+2. 也可以下载便携版 `echo-minutes-win-x64.zip`，解压到当前用户可写目录后运行 `MeetingTransfer.App.exe`。
 3. 首次启动会显示三步新手引导，并在程序目录旁生成 `appsettings.json` 与 `models.json`。完成或跳过后，引导不会重复弹出。
 4. 在引导第二步直接选择并下载模型：离线模型下载后会自动设为默认；需要实时录音时下载 Realtime Paraformer；需要导入后自动分人时下载 Speaker diarization。以后也可从主界面左下角“设置”继续下载或切换模型。
 5. 将一个已下载的 offline 模型设为默认并保存设置。
@@ -50,11 +50,11 @@ Meeting Transfer 1.0.0 是一款 Windows 本地会议录音、实时转写与离
 
 ## 应用更新
 
-EchoMinutes 启动后会异步检查 [`luckykevvv/echo-minutes`](https://github.com/luckykevvv/echo-minutes) 的最新 GitHub Release；发现新版本时，会显示版本号和 Release 更新说明。也可以在“设置 → Updates”中手动检查。
+EchoMinutes 启动后会异步检查 [`luckykevvv/echo-minutes`](https://github.com/luckykevvv/echo-minutes) 的最新 GitHub Release；发现新版本时，会显示版本号和 Release 更新说明。也可以在“设置 → Updates”中手动检查。每个 Release 同时提供推荐的 Windows 安装器和便携 ZIP。
 
 确认更新后，应用会下载 `echo-minutes-win-x64.zip` 及对应的 `.sha256` 文件，校验 SHA256，安全退出，覆盖程序文件并自动重启。更新过程不会覆盖 `appsettings.json`、`models.json`、已下载模型、录音、导出或 SQLite 数据库。
 
-维护者只需推送形如 `v1.0.1` 的 tag，GitHub Actions 会完成构建、测试、无模型权重检查，并创建包含固定名称 ZIP、SHA256 和自动更新说明的 Release：
+维护者只需推送形如 `v1.0.1` 的 tag，GitHub Actions 会完成构建、测试、无模型权重检查，并创建 Windows x64 安装器、便携 ZIP、对应 SHA256 和自动更新说明：
 
 ```powershell
 git tag v1.0.1
@@ -79,11 +79,11 @@ git push origin v1.0.1
 - 当前捆绑的 sherpa diarizer 在此 Windows 包中使用 CPU；Vulkan 仅用于 whisper.cpp 离线转写。
 - SQLite 会保存会话，但 1.0.0 尚无历史会话浏览 / 恢复界面。
 - 只有已取得可信摘要的模型会执行 SHA256 固定；未固定摘要的模型仍依赖 HTTPS。公开发布前应继续补齐上游摘要。
-- 当前没有安装器、自动更新、代码签名或崩溃恢复。
+- 当前安装器和自动更新包尚未进行代码签名；Windows SmartScreen 可能对首次下载显示未知发布者提示。
 
 ## 从源码构建
 
-需要 .NET 8 SDK、Git LFS、Windows x64，以及已准备好的 `third_party/ffmpeg`、`third_party/sherpa-onnx`、`third_party/whisper-cpp-vulkan` 运行时二进制。第三方 DLL/EXE 由 Git LFS 管理，clone 后请先执行 `git lfs pull`。发布项目只复制执行文件与运行库，不复制这些目录中的模型权重。
+需要 .NET 8 SDK、Windows x64，以及已准备好的 `third_party/ffmpeg`、`third_party/sherpa-onnx`、`third_party/whisper-cpp-vulkan` 运行时二进制。发布项目只复制执行文件与运行库，不复制这些目录中的模型权重。构建安装器还需要 Inno Setup 6；Release 工作流会自动安装。
 
 ```powershell
 dotnet restore MeetingTransfer.sln

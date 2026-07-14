@@ -1,74 +1,54 @@
-# Change Log — 2026-07-15 — EchoMinutes 仓库初始化与 GitHub Release 自动更新
+# Change Log — 2026-07-15 — 移除 Git LFS 并发布 Windows 安装器
 
-## 目标
+## 用户反馈
 
-- 将项目首次推送到 `https://github.com/luckykevvv/echo-minutes.git`。
-- 从 GitHub Releases 检查新版本与更新说明。
-- 启动后发现新版本时弹窗；设置页支持手动检查并安装。
-- 更新时保留用户配置、已下载模型、录音、导出和数据库。
+- 当前网络恢复后不需要 Git LFS。
+- GitHub Release 需要提供可直接安装的 Windows 安装包，而不只是便携 ZIP。
 
-## 更新检查与下载
+## Git 仓库调整
 
-- 新增 `MeetingTransfer.Core/Updates/GitHubReleaseClient.cs`：
-  - 查询 `luckykevvv/echo-minutes` 的 latest release。
-  - 对比当前程序集版本与 `vX.Y.Z` tag。
-  - 要求 Release 同时包含 `echo-minutes-win-x64.zip` 和 `.sha256`。
-  - 只接受 GitHub HTTPS 资产，限制压缩包不超过 1 GiB。
-  - 流式下载并报告进度，安装前强制校验 SHA256。
-- 启动完成或新手引导结束后异步检查；网络失败不打断启动。
-- 新增独立 `UpdateWindow`，展示 Release 标题、版本、更新时间、更新说明、包大小、下载进度和稍后/更新操作。
+- 删除 `.gitattributes` 中的 Git LFS 规则。
+- 20 个第三方运行时 DLL/EXE 恢复为普通 Git blob。
+- 最大文件 `avcodec-63.dll` 为 98,917,376 bytes，低于 GitHub 单文件限制。
+- Release workflow 不再启用 `actions/checkout` 的 `lfs: true`。
+- README 不再要求安装 Git LFS 或执行 `git lfs pull`。
 
-## 设置页
+## Windows 安装器
 
-- 新增 `Updates` 标签：显示当前版本、GitHub Release 来源、状态和“Check for updates”按钮。
-- 修复设置窗口原有 TabControl 模板只有一行的问题。此前标签栏与内容重叠，`Speech models / Tools / Updates` 会被模型列表盖住；现改为自动高度标签栏 + 剩余内容区。
-- 实机视觉验收确认三个标签和 Updates 卡片均正常显示。
-- 手动检查会进入加载状态；成功、无更新和失败均会恢复按钮并给出明确结果。
+- 新增 `installer/EchoMinutes.iss`，使用 Inno Setup 6 构建 `echo-minutes-setup-x64.exe`。
+- 默认安装到 `%LocalAppData%\Programs\EchoMinutes`，无需管理员权限。
+- 提供开始菜单快捷方式和可选桌面快捷方式。
+- 支持正常卸载、覆盖升级、关闭正在运行的应用并在安装后启动。
+- 安装内容来自已经通过模型权重和用户数据扫描的 `artifacts/publish`。
+- 安装目录对当前用户可写，原有 GitHub Release 自动更新机制可继续原地更新。
 
-## 独立更新器
+## Release 工作流
 
-- 新增 `MeetingTransfer.Updater`，发布时自动放入 `Updater/`。
-- 主程序完成下载后将更新器复制到临时目录并启动，然后正常关闭。
-- 更新器等待主进程退出，安全解压、备份被覆盖文件、复制新版本并自动重启。
-- 复制失败时恢复已备份文件。
-- 永不覆盖 `appsettings.json`、`models.json`、`data/`、`recordings/`、`exports/`。
-- 发布包不包含模型权重，因此用户 `models/` 下的已下载模型不会被删除或覆盖。
-
-## Release 自动化
-
-- 新增 `.github/workflows/release.yml`。
-- 推送 `v*` tag 后自动 restore、build、test、win-x64 publish。
-- 工作流阻止模型权重和用户数据进入 Release。
-- 第三方运行时 DLL/EXE 使用 Git LFS；Actions checkout 启用 `lfs: true`。
-- 自动生成固定名称 ZIP、SHA256 文件、GitHub Release 和更新说明。
-- README 已补充应用更新机制与发布 tag 命令。
+- tag 构建现在同时产出：
+  - `echo-minutes-setup-x64.exe`
+  - `echo-minutes-setup-x64.exe.sha256`
+  - `echo-minutes-win-x64.zip`
+  - `echo-minutes-win-x64.zip.sha256`
+- 工作流自动安装 Inno Setup、注入 tag 版本号、校验安装器确实生成，并上传全部四个 Release 资产。
+- README 快速开始改为优先推荐安装器，便携 ZIP 保留为备选。
+- 已知限制更新为“尚未代码签名”，不再错误声称没有安装器或自动更新。
 
 ## 验证
 
 - Release build：0 warning / 0 error。
-- 测试：74/74 通过，其中新增版本 tag 解析、Release JSON、SHA256 通过/拒绝测试及 WPF 更新页面渲染覆盖。
-- `dotnet format --verify-no-changes`：通过。
-- 独立更新器端到端探针：程序 EXE/DLL 和新运行时更新成功；配置、模型配置、SQLite 数据、用户模型均保持不变；ExitCode 0。
-- 正式包：55 个文件，265,011,162 bytes。
-- 模型权重：0；运行期用户数据：0；`Updater/EchoMinutes.Updater.exe` 存在。
-- `MeetingTransfer.App.dll` SHA256：`5655D2CB9BCD5EDC9A5E6F43BD5857C20D822AD0A43CDEFCB4785CBB210A232A`。
-- 本机对 GitHub 的应用内实网检查遇到 SSL 连接错误；失败状态和提示已验证，不影响启动。核心 Release 解析、下载、哈希与安装流程由自动化和端到端本地探针验证。
-- GitHub 初始推送成功：远端 `main` 已建立，20 个 Git LFS 运行时对象（约 260 MB）与源码提交均已上传。
+- 测试：74/74 通过。
+- GitHub Actions YAML：PyYAML 解析通过。
+- Inno Setup 脚本关键 section、每用户安装路径、固定输出文件名和最低权限均已静态核对。
+- 当前机器未预装 Inno Setup；最终安装器编译由 Windows GitHub Actions 执行并通过实际 Release 资产验收。
 
 ## 执行命令
 
 ```powershell
-dotnet restore MeetingTransfer.sln -p:NuGetAudit=false
-dotnet restore src\MeetingTransfer.App\MeetingTransfer.App.csproj -r win-x64 -p:NuGetAudit=false
+git rm --cached -r third_party
+git add third_party .github/workflows/release.yml README.md installer
+git check-attr filter -- third_party/ffmpeg/bin/avcodec-63.dll
+git cat-file -s :third_party/ffmpeg/bin/avcodec-63.dll
 dotnet build MeetingTransfer.sln -c Release --no-restore -p:NuGetAudit=false
 dotnet test MeetingTransfer.sln -c Release --no-build --no-restore -p:NuGetAudit=false
-dotnet format MeetingTransfer.sln --verify-no-changes --no-restore --severity warn
-dotnet publish src\MeetingTransfer.App\MeetingTransfer.App.csproj -c Release -r win-x64 --self-contained false --no-restore -p:NuGetAudit=false -o publish\win-x64
-git -c http.proxy= -c https.proxy= ls-remote https://github.com/luckykevvv/echo-minutes.git
-git lfs install --local
-git lfs track "third_party/**/*.dll" "third_party/**/*.exe"
-git commit -m "feat: initial EchoMinutes release"
-git -c http.proxy= -c https.proxy= -c http.version=HTTP/1.1 -c http.lowSpeedLimit=0 push -u origin main
+python -c "import yaml, pathlib; yaml.safe_load(pathlib.Path('.github/workflows/release.yml').read_text(encoding='utf-8'))"
 ```
-
-正式发布前均先解析并检查目标绝对路径位于工作区，再清理旧 `publish/win-x64`。更新器探针在 `%TEMP%` 的唯一目录中运行，并在校验后安全清理。

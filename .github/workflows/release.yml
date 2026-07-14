@@ -14,8 +14,6 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-        with:
-          lfs: true
 
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
@@ -62,6 +60,31 @@ jobs:
             "$hash  echo-minutes-win-x64.zip`n",
             [Text.UTF8Encoding]::new($false))
 
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          & $compiler "/DMyAppVersion=$version" installer/EchoMinutes.iss
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup failed with exit code $LASTEXITCODE."
+          }
+
+          $installer = 'artifacts/echo-minutes-setup-x64.exe'
+          if (-not (Test-Path -LiteralPath $installer)) {
+            throw "The Windows installer was not generated."
+          }
+
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText(
+            (Join-Path $PWD 'artifacts/echo-minutes-setup-x64.exe.sha256'),
+            "$hash  echo-minutes-setup-x64.exe`n",
+            [Text.UTF8Encoding]::new($false))
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -69,3 +92,5 @@ jobs:
           files: |
             artifacts/echo-minutes-win-x64.zip
             artifacts/echo-minutes-win-x64.zip.sha256
+            artifacts/echo-minutes-setup-x64.exe
+            artifacts/echo-minutes-setup-x64.exe.sha256
