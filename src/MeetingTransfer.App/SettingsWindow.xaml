@@ -80,9 +80,9 @@
             <Grid>
                 <TextBlock Text="Settings" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0" />
                 <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Style="{StaticResource IconButton}" Content="—" Click="Minimize_Click" />
-                    <Button Style="{StaticResource IconButton}" Content="□" Click="Maximize_Click" />
-                    <Button Style="{StaticResource IconButton}" Content="×" Click="CloseWindow_Click" Margin="0,0,4,0" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xE921;" Click="Minimize_Click" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xE922;" Click="Maximize_Click" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xE8BB;" Click="CloseWindow_Click" Margin="0,0,2,0" />
                 </StackPanel>
             </Grid>
         </Border>

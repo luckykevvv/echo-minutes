@@ -42,9 +42,9 @@
                 </StackPanel>
                 <TextBlock Grid.Column="1" Text="{Binding Document.Title}" Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Center" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Style="{StaticResource IconButton}" Content="—" ToolTip="Minimize" Click="Minimize_Click" />
-                    <Button Style="{StaticResource IconButton}" Content="□" ToolTip="Maximize" Click="Maximize_Click" />
-                    <Button Style="{StaticResource IconButton}" Content="×" ToolTip="Close" Click="Close_Click" Margin="0,0,4,0" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xE921;" ToolTip="Minimize" Click="Minimize_Click" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xE922;" ToolTip="Maximize" Click="Maximize_Click" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xE8BB;" ToolTip="Close" Click="Close_Click" Margin="0,0,2,0" />
                 </StackPanel>
             </Grid>
         </Border>

@@ -61,12 +61,12 @@
                 </StackPanel>
                 <Button HorizontalAlignment="Right"
                         Style="{StaticResource IconButton}"
-                        Content="×"
+                        Content="&#xE8BB;"
                         ToolTip="跳过引导"
                         AutomationProperties.Name="跳过新手引导"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
                         Click="Skip_Click"
-                        Margin="0,0,4,0" />
+                        Margin="0,0,2,0" />
             </Grid>
         </Border>
 
