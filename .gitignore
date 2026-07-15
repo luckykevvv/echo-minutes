@@ -23,6 +23,7 @@ models.json
 # Build output
 publish/
 dist/
+/artifacts/
 
 # Download cache for bundled third-party assets
 third_party/downloads/

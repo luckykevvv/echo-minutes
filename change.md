@@ -43,6 +43,9 @@
 - 第一次 `v1.0.0` Actions 暴露 `.gitignore` 回归：通用 `models/` 规则误排除了 `src/MeetingTransfer.Core/Models`。已改为仅忽略根目录 `/models/`，并单独忽略 `third_party` 模型权重；漏掉的四个模型目录源码已加入仓库。
 - 第二次 Actions 暴露 SDK 可移植性问题：CI 将数组 `.Reverse()` 绑定为返回 `void` 的原地反转。已改为显式倒序索引循环，避免不同 .NET 8 SDK 的重载解析差异。
 - 第三次 Actions 的 build/test 已通过，publish 暴露 `NETSDK1047`：通用 restore 没有生成 `win-x64` 目标，且 runner 默认选中了预装 SDK 10。已新增 `global.json` 锁定 .NET SDK 8.0.422，并在 publish 前显式执行 App 的 `-r win-x64` restore。
+- 第四次 Actions 已通过 publish 和 Inno Setup 安装，但安装器编译失败：Chocolatey 安装的 Inno Setup 不包含 `Languages\ChineseSimplified.isl`。已用同版本 Inno Setup 6.7.1 在本机复现并移除该非内置语言引用；安装器界面暂用内置英文，应用本身的中英文功能不受影响。
+- 修复后已在本机重新 publish，并用 Inno Setup 6.7.1 成功生成 `echo-minutes-setup-x64.exe`（55,633,688 bytes）；发布目录模型权重扫描和用户运行数据扫描均为 0。
+- 将本地与 CI 生成的 `/artifacts/` 加入 `.gitignore`，避免安装器、便携包和临时发布目录误入 Git。
 
 ## 执行命令
 
@@ -54,4 +57,7 @@ git cat-file -s :third_party/ffmpeg/bin/avcodec-63.dll
 dotnet build MeetingTransfer.sln -c Release --no-restore -p:NuGetAudit=false
 dotnet test MeetingTransfer.sln -c Release --no-build --no-restore -p:NuGetAudit=false
 python -c "import yaml, pathlib; yaml.safe_load(pathlib.Path('.github/workflows/release.yml').read_text(encoding='utf-8'))"
+choco install innosetup --no-progress -y
+curl.exe -4 --noproxy '*' -fL -o "$env:TEMP\innosetup.6.7.1.nupkg" "https://community.chocolatey.org/api/v2/package/innosetup/6.7.1"
+& "$env:TEMP\echo-minutes-inno\app\ISCC.exe" "/DMyAppVersion=1.0.0" installer\EchoMinutes.iss
 ```
