@@ -46,6 +46,10 @@
 - 第四次 Actions 已通过 publish 和 Inno Setup 安装，但安装器编译失败：Chocolatey 安装的 Inno Setup 不包含 `Languages\ChineseSimplified.isl`。已用同版本 Inno Setup 6.7.1 在本机复现并移除该非内置语言引用；安装器界面暂用内置英文，应用本身的中英文功能不受影响。
 - 修复后已在本机重新 publish，并用 Inno Setup 6.7.1 成功生成 `echo-minutes-setup-x64.exe`（55,633,688 bytes）；发布目录模型权重扫描和用户运行数据扫描均为 0。
 - 将本地与 CI 生成的 `/artifacts/` 加入 `.gitignore`，避免安装器、便携包和临时发布目录误入 Git。
+- 最终 `v1.0.0` Actions（run `29391954234`）全部通过，正式 Release 已发布且不是 draft/prerelease。
+- Release 四个资产均已上传：安装器 55,643,903 bytes、便携 ZIP 100,299,948 bytes，以及各自 SHA256 文件。
+- GitHub 资产 API 返回的安装器与 ZIP digest 分别为 `46e00bdc...b04144f`、`3cdb698e...bcb9902`，与 Release 中对应 `.sha256` 文件完全一致。
+- Release 验收时远端 `main`、远端 `v1.0.0`、本地 HEAD 与本地 tag 均指向发布提交 `4ad61fe7745fd21b5fb77246535bdaaa7ff5b7ed`；后续仅追加本变更记录，Release tag 保持不动。
 
 ## 执行命令
 
@@ -60,4 +64,7 @@ python -c "import yaml, pathlib; yaml.safe_load(pathlib.Path('.github/workflows/
 choco install innosetup --no-progress -y
 curl.exe -4 --noproxy '*' -fL -o "$env:TEMP\innosetup.6.7.1.nupkg" "https://community.chocolatey.org/api/v2/package/innosetup/6.7.1"
 & "$env:TEMP\echo-minutes-inno\app\ISCC.exe" "/DMyAppVersion=1.0.0" installer\EchoMinutes.iss
+git -c http.proxy= -c https.proxy= -c http.sslBackend=schannel -c http.version=HTTP/1.1 -c http.curloptResolve=github.com:443:140.82.116.4 push origin main
+$env:GIT_LFS_SKIP_PUSH='1'; git -c http.proxy= -c https.proxy= -c http.sslBackend=schannel -c http.version=HTTP/1.1 -c http.curloptResolve=github.com:443:140.82.116.4 push origin v1.0.0
+curl.exe --noproxy '*' -H 'Accept: application/vnd.github+json' -H 'User-Agent: EchoMinutes-release-audit' 'https://api.github.com/repos/luckykevvv/echo-minutes/releases/tags/v1.0.0'
 ```
