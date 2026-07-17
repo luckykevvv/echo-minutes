@@ -96,6 +96,9 @@
 - 最终正式产物复核：安装器 55,604,384 bytes，SHA256 为 `2bcfe17448866791f625023c4922686ca2ea369f30357454e813f4ac156c2bbf`；便携 ZIP 98,076,434 bytes，展开后 264,979,837 bytes，SHA256 为 `63975a6b2ca64f2b52a4fec581d782ea701673db5c8398ae6e8d792a8d84e766`。两份校验文件均匹配，ZIP 中模型权重 0、用户数据 0、PDB 0、第三方许可 9。
 - 提交前清理 NAudio 与 SQLite 许可文本首尾多余空行；`git diff --cached --check` 通过，并确认暂存内容不含开发机地址、密码、私钥或 GitHub token。
 - 准备发布 GitHub Release `v1.0.1`：确认 Release 工作流由正式版本标签触发，并会自动执行构建、测试、无模型/用户数据/PDB 门禁，随后上传安装器、便携 ZIP 及两份 SHA256 文件。
+- 新增 `CHANGELOG.md`，为 `v1.0.1` 按新增、改进、修复、安全与发布分类记录面向用户的实际变化；README 增加版本记录入口和正式发布要求。
+- 新增 `scripts/Get-ReleaseNotes.ps1`，Release 工作流会按标签版本提取对应 changelog 章节作为发布说明；缺少版本章节、内容为空、没有分类标题或没有具体条目时发布失败，不再只生成提交比较链接。
+- 发布说明脚本使用完整的 `[IO.Directory]` 类型名，兼容 Windows PowerShell 与 GitHub Actions 的 PowerShell 7 环境。
 
 ## 执行命令
 
@@ -125,5 +128,6 @@ git status --short
 git ls-files -v | Select-String '^S'
 git tag -a v1.0.1 -m "EchoMinutes 1.0.1"
 git push origin v1.0.1
+pwsh -NoProfile -File scripts/Get-ReleaseNotes.ps1 -Version 1.0.1 -OutputPath artifacts/release-notes-review.md
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 ```

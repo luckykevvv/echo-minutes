@@ -32,6 +32,10 @@ jobs:
             "RELEASE_VERSION=$($Matches.version)`n",
             [Text.UTF8Encoding]::new($false))
 
+      - name: Prepare release notes
+        shell: pwsh
+        run: ./scripts/Get-ReleaseNotes.ps1 -Version $env:RELEASE_VERSION
+
       - name: Restore
         shell: pwsh
         run: |
@@ -157,7 +161,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          generate_release_notes: false
+          body_path: artifacts/release-notes.md
           files: |
             artifacts/echo-minutes-win-x64.zip
             artifacts/echo-minutes-win-x64.zip.sha256
