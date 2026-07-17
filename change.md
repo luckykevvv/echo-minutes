@@ -99,6 +99,12 @@
 - 新增 `CHANGELOG.md`，为 `v1.0.1` 按新增、改进、修复、安全与发布分类记录面向用户的实际变化；README 增加版本记录入口和正式发布要求。
 - 新增 `scripts/Get-ReleaseNotes.ps1`，Release 工作流会按标签版本提取对应 changelog 章节作为发布说明；缺少版本章节、内容为空、没有分类标题或没有具体条目时发布失败，不再只生成提交比较链接。
 - 发布说明脚本使用完整的 `[IO.Directory]` 类型名，兼容 Windows PowerShell 与 GitHub Actions 的 PowerShell 7 环境。
+- 完善 README 首屏：新增最新版、Windows、本地优先和模型独立下载徽章，提供 Release、changelog 与示例音频入口，并加入真实界面 GIF、离线转写截图和模型管理截图。
+- 使用 Windows TTS 生成 26.9 秒、216,332 bytes 的英文合成会议音频，通过正式 `v1.0.1` 构建和 Whisper tiny.en 实际导入；转写得到 8 个片段、1 位 Speaker，演示素材不包含真实会议内容。
+- README 素材均裁掉本机数据库路径；最终 GIF 为 4.83 秒、263,846 bytes，两张正式截图分别展示示例音频转写结果和 Offline / Realtime / Feature Resources 模型管理。
+- 修复从非程序目录启动时相对数据库、录音和导出路径错误跟随进程工作目录的问题：运行时统一以 `AppContext.BaseDirectory` 解析相对存储路径，同时保留用户配置的绝对路径，并新增两项回归测试。
+- Release 构建验证为 0 warning / 0 error；核心测试增加到 77/77，WPF/更新器烟雾测试 6/6，总计 83/83。随后从 Codex 工作目录启动新构建，界面中的数据库路径仍正确锚定到应用 `bin/Release/net8.0-windows/data`，不再落入 WindowsApps 或其他启动目录。
+- 清理历史命令记录中的本机用户名路径，改用 `$env:TEMP` 通用写法，避免 README 推广提交携带本机标识。
 
 ## 执行命令
 
@@ -110,7 +116,7 @@ dotnet publish src/MeetingTransfer.App/MeetingTransfer.App.csproj -c Release -r 
 dotnet restore MeetingTransfer.sln
 dotnet restore src/MeetingTransfer.App/MeetingTransfer.App.csproj -r win-x64 -p:NuGetAudit=false
 dotnet publish src/MeetingTransfer.App/MeetingTransfer.App.csproj -c Release -r win-x64 --self-contained false --no-restore -p:NuGetAudit=false -o artifacts/publish
-& 'C:\Users\C3EZ\AppData\Local\Temp\echo-minutes-inno\app\ISCC.exe' installer/EchoMinutes.iss
+& "$env:TEMP\echo-minutes-inno\app\ISCC.exe" installer/EchoMinutes.iss
 Compress-Archive -Path artifacts/publish/* -DestinationPath artifacts/echo-minutes-win-x64.zip -CompressionLevel Optimal
 Get-FileHash artifacts/echo-minutes-setup-x64.exe -Algorithm SHA256
 Get-FileHash artifacts/echo-minutes-win-x64.zip -Algorithm SHA256
@@ -129,5 +135,9 @@ git ls-files -v | Select-String '^S'
 git tag -a v1.0.1 -m "EchoMinutes 1.0.1"
 git push origin v1.0.1
 pwsh -NoProfile -File scripts/Get-ReleaseNotes.ps1 -Version 1.0.1 -OutputPath artifacts/release-notes-review.md
+pwsh -NoProfile -File scripts/Create-ReadmeDemoAudio.ps1
+ffmpeg -f gdigrab -i title=EchoMinutes -frames:v 1 docs/assets/readme/transcript.png
+ffmpeg -f gdigrab -i title=EchoMinutes -frames:v 1 docs/assets/readme/models.png
+ffmpeg -loop 1 -i docs/assets/readme/workbench.png -loop 1 -i docs/assets/readme/transcript.png -filter_complex xfade docs/assets/readme/import-demo.gif
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 ```

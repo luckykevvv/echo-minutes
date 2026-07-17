@@ -869,6 +869,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private (AppOptions App, SherpaOnnxOptions Sherpa) LoadOptions()
     {
         var settings = _settingsFileService.Load();
+        StoragePathResolver.Resolve(settings.App.Storage);
         return (settings.App, settings.SherpaOnnx);
     }
 
