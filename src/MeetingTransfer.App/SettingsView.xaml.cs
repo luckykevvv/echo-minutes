@@ -2,25 +2,30 @@ using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
 using MeetingTransfer.App.Configuration;
+using MeetingTransfer.App.Localization;
 using MeetingTransfer.App.ViewModels;
 using MeetingTransfer.App.Updates;
 using MeetingTransfer.Core.Models;
 
 namespace MeetingTransfer.App;
 
-public partial class SettingsWindow : Window
+public partial class SettingsView : UserControl, IDisposable
 {
     private readonly SettingsFileService _settingsFileService;
     private readonly RuntimeSettings _settings;
     private readonly ModelCatalog _catalog;
     private readonly ModelCardListViewModel _modelCards;
     private readonly UpdateCoordinator _updateCoordinator = new();
+    private readonly string _originalLanguage;
+    private bool _languageSaved;
+    private bool _disposed;
 
-    public SettingsWindow(SettingsFileService settingsFileService)
+    public SettingsView(SettingsFileService settingsFileService)
     {
         InitializeComponent();
         _settingsFileService = settingsFileService;
         _settings = _settingsFileService.Load();
+        _originalLanguage = LocalizationManager.Normalize(_settings.App.Ui.Language);
         _catalog = new ModelCatalog();
         _modelCards = new ModelCardListViewModel(_catalog, _settingsFileService, _settings.Models.ActiveModelId);
 
@@ -53,6 +58,8 @@ public partial class SettingsWindow : Window
         DataContext = _modelCards;
         SettingsPathText.Text = $"{_settingsFileService.AppSettingsPath} | {_settingsFileService.ModelsPath}";
         CurrentVersionText.Text = UpdateCoordinator.CurrentVersionText;
+        ApplicationLanguageBox.ItemsSource = LocalizationManager.SupportedLanguages;
+        ApplicationLanguageBox.SelectedValue = _originalLanguage;
 
         LoadFields();
         if (_modelCards.Cards.Count > 0)
@@ -62,6 +69,19 @@ public partial class SettingsWindow : Window
     }
 
     public ModelCardListViewModel ViewModel => _modelCards;
+    public event EventHandler? CloseRequested;
+    public event EventHandler? SettingsSaved;
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _modelCards.Dispose();
+    }
 
     private void LoadFields()
     {
@@ -83,40 +103,54 @@ public partial class SettingsWindow : Window
     {
         try
         {
-            _settings.App.Speech.Engine = "SherpaOnnx";
-            _settings.App.Import.FfmpegPath = EmptyToNull(FfmpegPathBox.Text);
-            _settings.SherpaOnnx.OnlineRecognizerExecutable = EmptyToNull(OnlineExeBox.Text);
-            _settings.SherpaOnnx.OnlineArgumentsTemplate = EmptyToNull(OnlineArgsBox.Text);
-            _settings.SherpaOnnx.WhisperCppLanguage = OfflineLanguageBox.SelectedValue as string ?? "bilingual";
+            // Downloads and active-model changes persist independently while
+            // this view is open. Merge edits into the latest file state so Save
+            // cannot restore the model snapshot loaded by the constructor.
+            var latest = _settingsFileService.Load();
+            latest.App.Speech.Engine = "SherpaOnnx";
+            latest.App.Import.FfmpegPath = EmptyToNull(FfmpegPathBox.Text);
+            latest.SherpaOnnx.OnlineRecognizerExecutable = EmptyToNull(OnlineExeBox.Text);
+            latest.SherpaOnnx.OnlineArgumentsTemplate = EmptyToNull(OnlineArgsBox.Text);
+            latest.SherpaOnnx.WhisperCppLanguage = OfflineLanguageBox.SelectedValue as string ?? "bilingual";
+            latest.App.Ui.Language = LocalizationManager.Normalize(ApplicationLanguageBox.SelectedValue as string);
 
-            _settingsFileService.Save(_settings);
-            DialogResult = true;
-            Close();
+            _settingsFileService.Save(latest);
+            _languageSaved = true;
+            SettingsSaved?.Invoke(this, EventArgs.Empty);
+            CloseRequested?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Could not save settings", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow, ex.Message, LocalizationManager.Text("SaveSettingsFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
-        DialogResult = false;
-        Close();
+        RestoreLanguageIfNeeded();
+        CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    private void Minimize_Click(object sender, RoutedEventArgs e)
-        => WindowState = WindowState.Minimized;
-
-    private void Maximize_Click(object sender, RoutedEventArgs e)
-        => WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
-
-    private void CloseWindow_Click(object sender, RoutedEventArgs e)
+    private void Back_Click(object sender, RoutedEventArgs e)
     {
-        DialogResult = false;
-        Close();
+        RestoreLanguageIfNeeded();
+        CloseRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ApplicationLanguageBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ApplicationLanguageBox.SelectedValue is string language)
+        {
+            LocalizationManager.Apply(language);
+        }
+    }
+
+    private void RestoreLanguageIfNeeded()
+    {
+        if (!_languageSaved)
+        {
+            LocalizationManager.Apply(_originalLanguage);
+        }
     }
 
     private void BrowseFile_Click(object sender, RoutedEventArgs e)
@@ -131,10 +165,11 @@ public partial class SettingsWindow : Window
         var dialog = new OpenFileDialog
         {
             CheckFileExists = false,
-            Filter = "Executables and model files|*.exe;*.onnx;*.txt|All files|*.*"
+            Filter = $"{LocalizationManager.Text("ExecutableModelFiles")}|*.exe;*.onnx;*.txt|" +
+                     $"{LocalizationManager.Text("AllFiles")}|*.*"
         };
 
-        if (dialog.ShowDialog(this) == true)
+        if (dialog.ShowDialog(OwnerWindow) == true)
         {
             textBox.Text = dialog.FileName;
         }
@@ -146,7 +181,7 @@ public partial class SettingsWindow : Window
         try
         {
             await _updateCoordinator.CheckAndPromptAsync(
-                this,
+                OwnerWindow,
                 showUpToDate: true,
                 message => UpdateStatusText.Text = message).ConfigureAwait(true);
         }
@@ -155,6 +190,11 @@ public partial class SettingsWindow : Window
             CheckForUpdatesButton.IsEnabled = true;
         }
     }
+
+    private Window OwnerWindow
+        => Window.GetWindow(this)
+           ?? Application.Current.MainWindow
+           ?? throw new InvalidOperationException("Settings must be hosted inside the main window.");
 
     private static string? EmptyToNull(string value)
     {

@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using MeetingTransfer.App.Configuration;
+using MeetingTransfer.App.Localization;
+using MeetingTransfer.App.Updates;
 using MeetingTransfer.App.ViewModels;
 using MeetingTransfer.Core.Models;
 using MeetingTransfer.Core.Transcripts;
@@ -29,16 +31,47 @@ public sealed class OnboardingRenderSmokeTests
                 var app = new App();
                 app.InitializeComponent();
                 var catalog = new ModelCatalog(temporaryDirectory);
-                var window = new OnboardingWindow(new SettingsFileService(temporaryDirectory), catalog);
+                var settingsFileService = new SettingsFileService(temporaryDirectory);
+                var window = new OnboardingWindow(settingsFileService, catalog);
                 var cards = Assert.IsType<ModelCardListViewModel>(window.DataContext);
                 Assert.Equal(8, cards.Cards.Count);
                 Assert.Equal(
                     [
-                        "OFFLINE TRANSCRIPTION  ·  离线转写",
-                        "REALTIME TRANSCRIPTION  ·  实时转写",
-                        "FEATURE RESOURCES  ·  功能资源"
+                        "离线转写",
+                        "实时转写",
+                        "功能资源"
                     ],
                     cards.Cards.Select(card => card.CategoryLabel).Distinct());
+                var onboardingLanguageBox = Assert.IsType<ComboBox>(window.FindName("OnboardingLanguageBox"));
+                Assert.Equal("简体中文", Assert.IsType<LanguageOption>(onboardingLanguageBox.SelectedItem).ToString());
+                var localizedCard = cards.Cards.Single(card => card.Id == "streaming-paraformer-bilingual");
+                var sileroVad = localizedCard.Model.Files.Single(file => file.Name == "silero_vad.onnx");
+                Assert.Equal(
+                    "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+                    sileroVad.Url);
+                Assert.Equal(
+                    "9E2449E1087496D8D4CABA907F23E0BD3F78D91FA552479BB9C23AC09CBB1FD6",
+                    sileroVad.Sha256);
+                Assert.Equal("实时", localizedCard.ExecutionMode);
+                Assert.Contains("实时录音必需模型", localizedCard.Description, StringComparison.Ordinal);
+                Assert.Contains("下载", localizedCard.PrimaryActionLabel, StringComparison.Ordinal);
+
+                var baseCard = cards.Cards.Single(card => card.Id == "whisper-base");
+                Assert.Equal("多语言", baseCard.LanguagesDisplay);
+                MarkModelInstalled(catalog, baseCard);
+                var onboardingConcurrentSettings = settingsFileService.Load();
+                onboardingConcurrentSettings.Models.ActiveModelId = baseCard.Id;
+                onboardingConcurrentSettings.SherpaOnnx.ActiveModelId = baseCard.Id;
+                settingsFileService.Save(onboardingConcurrentSettings);
+                onboardingLanguageBox.SelectedValue = "en-US";
+                Assert.Equal(baseCard.Id, settingsFileService.Load().Models.ActiveModelId);
+                Assert.Equal("English", Assert.IsType<LanguageOption>(onboardingLanguageBox.SelectedItem).ToString());
+                Assert.Equal("Multilingual", baseCard.LanguagesDisplay);
+                Assert.Equal("Realtime", localizedCard.ExecutionMode);
+                Assert.Contains("Required for live recording", localizedCard.Description, StringComparison.Ordinal);
+                Assert.Contains("Download", localizedCard.PrimaryActionLabel, StringComparison.Ordinal);
+                Assert.Contains("REALTIME TRANSCRIPTION", cards.Cards.Select(card => card.CategoryLabel));
+                onboardingLanguageBox.SelectedValue = "zh-CN";
 
                 var stepOne = Assert.IsAssignableFrom<FrameworkElement>(window.FindName("StepOne"));
                 var stepTwo = Assert.IsType<Grid>(window.FindName("StepTwo"));
@@ -75,18 +108,48 @@ public sealed class OnboardingRenderSmokeTests
 
                 nextButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.Equal(Visibility.Visible, stepTwo.Visibility);
-                Assert.Contains("至少一个模型", setupStatus.Text, StringComparison.Ordinal);
+                Assert.Contains("至少一个离线", setupStatus.Text, StringComparison.Ordinal);
+                var speakerCard = cards.Cards.Single(card => card.Id == "speaker-diarization");
+                speakerCard.State = ModelInstallState.Installed;
+                nextButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(Visibility.Visible, stepTwo.Visibility);
+                Assert.Contains("不能单独用于转写", setupStatus.Text, StringComparison.Ordinal);
+                baseCard.State = ModelInstallState.Installed;
+                nextButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(Visibility.Visible, Assert.IsAssignableFrom<FrameworkElement>(window.FindName("StepThree")).Visibility);
 
-                var settingsWindow = new SettingsWindow(new SettingsFileService(temporaryDirectory));
-                var currentVersionText = Assert.IsType<System.Windows.Documents.Run>(settingsWindow.FindName("CurrentVersionText"));
-                var checkForUpdatesButton = Assert.IsType<Button>(settingsWindow.FindName("CheckForUpdatesButton"));
-                var updateStatusText = Assert.IsType<TextBlock>(settingsWindow.FindName("UpdateStatusText"));
+                var settingsView = new SettingsView(settingsFileService);
+                var applicationLanguageBox = Assert.IsType<ComboBox>(settingsView.FindName("ApplicationLanguageBox"));
+                Assert.Equal("简体中文", Assert.IsType<LanguageOption>(applicationLanguageBox.SelectedItem).ToString());
+                var currentVersionText = Assert.IsType<System.Windows.Documents.Run>(settingsView.FindName("CurrentVersionText"));
+                var checkForUpdatesButton = Assert.IsType<Button>(settingsView.FindName("CheckForUpdatesButton"));
+                var updateStatusText = Assert.IsType<TextBlock>(settingsView.FindName("UpdateStatusText"));
                 Assert.StartsWith("v", currentVersionText.Text, StringComparison.Ordinal);
-                Assert.Equal("Check for updates", checkForUpdatesButton.Content);
-                Assert.Contains("automatically", updateStatusText.Text, StringComparison.OrdinalIgnoreCase);
-                settingsWindow.Measure(new Size(1180, 760));
-                settingsWindow.Arrange(new Rect(0, 0, 1180, 760));
-                settingsWindow.UpdateLayout();
+                Assert.Equal("检查更新", checkForUpdatesButton.Content);
+                Assert.Contains("自动检查", updateStatusText.Text, StringComparison.Ordinal);
+                var smallCard = settingsView.ViewModel.Cards.Single(card => card.Id == "whisper-small");
+                MarkModelInstalled(catalog, smallCard);
+                var settingsConcurrentState = settingsFileService.Load();
+                settingsConcurrentState.Models.ActiveModelId = smallCard.Id;
+                settingsConcurrentState.SherpaOnnx.ActiveModelId = smallCard.Id;
+                settingsFileService.Save(settingsConcurrentState);
+                applicationLanguageBox.SelectedValue = "en-US";
+                LocalizationManager.Apply("en-US");
+                settingsView.UpdateLayout();
+                Assert.Equal("English", Assert.IsType<LanguageOption>(applicationLanguageBox.SelectedItem).ToString());
+                Assert.Equal("Check for updates", LocalizationManager.Text("CheckForUpdates"));
+                Assert.Contains("automatically", LocalizationManager.Text("AutomaticUpdateHint"), StringComparison.OrdinalIgnoreCase);
+                var saveSettingsButton = Assert.IsType<Button>(settingsView.FindName("SaveSettingsButton"));
+                saveSettingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(smallCard.Id, settingsFileService.Load().Models.ActiveModelId);
+                settingsView.Measure(new Size(1180, 760));
+                settingsView.Arrange(new Rect(0, 0, 1180, 760));
+                settingsView.UpdateLayout();
+                var offlineLanguageBox = Assert.IsType<ComboBox>(settingsView.FindName("OfflineLanguageBox"));
+                offlineLanguageBox.ApplyTemplate();
+                var dropDownToggle = Assert.IsType<System.Windows.Controls.Primitives.ToggleButton>(
+                    offlineLanguageBox.Template.FindName("DropDownToggle", offlineLanguageBox));
+                Assert.InRange(Math.Abs(dropDownToggle.ActualWidth - offlineLanguageBox.ActualWidth), 0, 0.5);
 
                 var release = new ReleaseInfo(
                     "v9.0.0",
@@ -105,6 +168,14 @@ public sealed class OnboardingRenderSmokeTests
 
                 var mainWindow = new MainWindow();
                 var mainViewModel = Assert.IsType<MainWindowViewModel>(mainWindow.DataContext);
+                var buildVersionText = Assert.IsType<TextBlock>(mainWindow.FindName("BuildVersionText"));
+                Assert.Equal(UpdateCoordinator.CurrentVersionText, buildVersionText.Text);
+                var minimizeWindowButton = Assert.IsType<Button>(mainWindow.FindName("MinimizeWindowButton"));
+                var maximizeWindowButton = Assert.IsType<Button>(mainWindow.FindName("MaximizeWindowButton"));
+                var closeWindowButton = Assert.IsType<Button>(mainWindow.FindName("CloseWindowButton"));
+                Assert.Equal("Minimize", minimizeWindowButton.ToolTip);
+                Assert.Equal("Maximize", maximizeWindowButton.ToolTip);
+                Assert.Equal("Close", closeWindowButton.ToolTip);
                 var emptyPanel = Assert.IsType<Border>(mainWindow.FindName("NoSpeakersPanel"));
                 var speakersListPanel = Assert.IsType<ScrollViewer>(mainWindow.FindName("SpeakersListPanel"));
                 var speakerItems = Assert.IsType<ItemsControl>(mainWindow.FindName("SpeakerItemsControl"));
@@ -126,6 +197,25 @@ public sealed class OnboardingRenderSmokeTests
                 Assert.False(mainViewModel.HasSpeakers);
                 Assert.True(mainViewModel.HasNoSpeakers);
 
+                var workspaceView = Assert.IsType<Grid>(mainWindow.FindName("WorkspaceView"));
+                var settingsHost = Assert.IsType<Grid>(mainWindow.FindName("SettingsHost"));
+                mainViewModel.SettingsCommand.Execute(null);
+                mainWindow.UpdateLayout();
+                Assert.Equal(Visibility.Collapsed, workspaceView.Visibility);
+                Assert.Equal(Visibility.Visible, settingsHost.Visibility);
+                var embeddedSettings = Assert.IsType<SettingsView>(Assert.Single(settingsHost.Children));
+                var disposedCard = embeddedSettings.ViewModel.Cards[0];
+                var disposedCardNotifications = 0;
+                disposedCard.PropertyChanged += (_, _) => disposedCardNotifications++;
+                var backButton = Assert.IsType<Button>(embeddedSettings.FindName("BackToWorkspaceButton"));
+                backButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                mainWindow.UpdateLayout();
+                Assert.Equal(Visibility.Visible, workspaceView.Visibility);
+                Assert.Equal(Visibility.Collapsed, settingsHost.Visibility);
+                disposedCardNotifications = 0;
+                LocalizationManager.Apply("zh-CN");
+                Assert.Equal(0, disposedCardNotifications);
+
                 var firstSpeaker = mainViewModel.Document.EnsureSpeaker("speaker-1", "Speaker 1");
                 var firstSegment = new TranscriptSegment
                 {
@@ -141,6 +231,16 @@ public sealed class OnboardingRenderSmokeTests
                 Assert.True(mainViewModel.HasSpeakers);
                 Assert.False(mainViewModel.HasNoSpeakers);
                 Assert.Single(mainViewModel.Speakers);
+
+                LocalizationManager.Apply("zh-CN");
+                Assert.Equal("最小化", minimizeWindowButton.ToolTip);
+                Assert.Equal("最大化", maximizeWindowButton.ToolTip);
+                Assert.Equal("关闭", closeWindowButton.ToolTip);
+                Assert.StartsWith("会议 ", mainViewModel.Document.Title, StringComparison.Ordinal);
+                Assert.Equal("说话人 1", firstSpeaker.Name);
+                LocalizationManager.Apply("en-US");
+                Assert.StartsWith("Meeting ", mainViewModel.Document.Title, StringComparison.Ordinal);
+                Assert.Equal("Speaker 1", firstSpeaker.Name);
 
                 Assert.True(mainViewModel.CommitSpeakerName(firstSpeaker.Id, "Alice"));
                 Assert.Equal("Alice", firstSpeaker.Name);
@@ -207,6 +307,16 @@ public sealed class OnboardingRenderSmokeTests
             BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull(method);
         method.Invoke(viewModel, null);
+    }
+
+    private static void MarkModelInstalled(ModelCatalog catalog, ModelCardViewModel card)
+    {
+        foreach (var file in card.Model.Files)
+        {
+            var path = catalog.GetInstalledFilePath(card.Model, file);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllBytes(path, [1]);
+        }
     }
 
     private static string FindRepositoryRoot()

@@ -9,6 +9,9 @@ namespace MeetingTransfer.Core.Models;
 public sealed class ModelDownloader
 {
     private const int MaxAttempts = 3;
+    private const long MinimumDownloadLimitBytes = 512L * 1024 * 1024;
+    private const long DefaultDownloadLimitBytes = 2L * 1024 * 1024 * 1024;
+    private const long MaximumDownloadLimitBytes = 8L * 1024 * 1024 * 1024;
     private readonly HttpClient _http;
 
     public ModelDownloader(HttpClient? httpClient = null)
@@ -37,6 +40,7 @@ public sealed class ModelDownloader
 
         var dir = catalog.GetModelDirectory(model);
         Directory.CreateDirectory(dir);
+        var maximumDownloadBytes = GetMaximumDownloadBytes(model.SizeBytes);
 
         // Pre-count total bytes for an accurate progress bar.
         long totalBytes = 0;
@@ -46,8 +50,9 @@ public sealed class ModelDownloader
             var uri = GetValidatedUri(model.Files[i].Url);
             try
             {
+                using var request = new HttpRequestMessage(HttpMethod.Head, uri);
                 using var head = await _http.SendAsync(
-                    new HttpRequestMessage(HttpMethod.Head, uri),
+                    request,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken).ConfigureAwait(false);
                 if (head.IsSuccessStatusCode && head.Content.Headers.ContentLength is long len)
@@ -60,6 +65,11 @@ public sealed class ModelDownloader
             {
                 // If HEAD fails, we'll just fall back to per-file indeterminate progress.
             }
+        }
+        if (totalBytes > maximumDownloadBytes)
+        {
+            throw new InvalidDataException(
+                $"Model download is larger than the allowed limit of {maximumDownloadBytes} bytes.");
         }
         if (totalBytes == 0)
         {
@@ -90,6 +100,12 @@ public sealed class ModelDownloader
                     using var resp = await _http.GetAsync(
                         uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                     resp.EnsureSuccessStatusCode();
+                    if (resp.Content.Headers.ContentLength is long responseLength &&
+                        responseLength > maximumDownloadBytes - downloadedBeforeFile)
+                    {
+                        throw new InvalidDataException(
+                            $"Model download is larger than the allowed limit of {maximumDownloadBytes} bytes.");
+                    }
 
                     await using (var src = await resp.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
                     await using (var dst = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -102,6 +118,11 @@ public sealed class ModelDownloader
                             await dst.WriteAsync(buf.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
                             fileDownloaded += read;
                             downloaded = downloadedBeforeFile + fileDownloaded;
+                            if (downloaded > maximumDownloadBytes)
+                            {
+                                throw new InvalidDataException(
+                                    $"Model download exceeded the allowed limit of {maximumDownloadBytes} bytes.");
+                            }
                             if (totalBytes > 0)
                             {
                                 progress?.Report(Math.Min(1.0, (double)downloaded / totalBytes));
@@ -177,6 +198,19 @@ public sealed class ModelDownloader
         }
 
         return uri;
+    }
+
+    private static long GetMaximumDownloadBytes(long declaredSizeBytes)
+    {
+        if (declaredSizeBytes <= 0)
+        {
+            return DefaultDownloadLimitBytes;
+        }
+
+        var doubled = declaredSizeBytes > MaximumDownloadLimitBytes / 2
+            ? MaximumDownloadLimitBytes
+            : declaredSizeBytes * 2;
+        return Math.Clamp(doubled, MinimumDownloadLimitBytes, MaximumDownloadLimitBytes);
     }
 
     private static void ExtractSingleFile(string archivePath, ModelFileExtract extract)

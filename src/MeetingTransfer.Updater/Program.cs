@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 
@@ -6,6 +7,8 @@ namespace EchoMinutes.Updater;
 
 internal static class Program
 {
+    private const int MaximumArchiveEntries = 10_000;
+    private const long MaximumExpandedBytes = 2L * 1024 * 1024 * 1024;
     private static readonly HashSet<string> ProtectedRoots = new(StringComparer.OrdinalIgnoreCase)
     {
         "appsettings.json",
@@ -20,11 +23,17 @@ internal static class Program
     {
         string? targetDirectory = null;
         string? appExecutable = null;
+        string? packagePath = null;
+        var language = CultureInfo.CurrentUICulture.Name;
         var restartApplication = true;
         try
         {
             var options = ParseArguments(args);
-            var packagePath = Required(options, "package");
+            if (options.TryGetValue("language", out var requestedLanguage))
+            {
+                language = requestedLanguage;
+            }
+            packagePath = Path.GetFullPath(Required(options, "package"));
             targetDirectory = Path.GetFullPath(Required(options, "target"));
             appExecutable = Path.GetFullPath(Required(options, "app"));
             var processId = int.Parse(Required(options, "pid"));
@@ -43,13 +52,21 @@ internal static class Program
         {
             var logPath = Path.Combine(Path.GetTempPath(), $"EchoMinutes-update-error-{DateTime.UtcNow:yyyyMMdd-HHmmss}.log");
             File.WriteAllText(logPath, ex.ToString());
-            MessageBox(IntPtr.Zero, $"EchoMinutes could not be updated.\n\n{ex.Message}\n\nDetails: {logPath}", "Update failed", 0x10);
+            var failure = BuildFailureMessage(language, ex.Message, logPath);
+            MessageBox(IntPtr.Zero, failure.Text, failure.Caption, 0x10);
             if (restartApplication && !string.IsNullOrWhiteSpace(appExecutable) && File.Exists(appExecutable))
             {
                 Process.Start(new ProcessStartInfo(appExecutable) { UseShellExecute = true });
             }
 
             return 1;
+        }
+        finally
+        {
+            if (packagePath is not null)
+            {
+                TryCleanupDownloadedPackage(packagePath);
+            }
         }
     }
 
@@ -69,7 +86,7 @@ internal static class Program
         }
     }
 
-    private static void ApplyPackage(string packagePath, string targetDirectory)
+    internal static void ApplyPackage(string packagePath, string targetDirectory)
     {
         if (!File.Exists(packagePath))
         {
@@ -85,6 +102,7 @@ internal static class Program
 
         try
         {
+            ValidateArchive(packagePath, stagingDirectory);
             ZipFile.ExtractToDirectory(packagePath, stagingDirectory, overwriteFiles: true);
             var contentRoot = FindContentRoot(stagingDirectory);
             var copiedFiles = new List<(string Target, string? Backup)>();
@@ -134,12 +152,64 @@ internal static class Program
             try
             {
                 Directory.Delete(workDirectory, recursive: true);
-                Directory.Delete(Path.GetDirectoryName(packagePath)!, recursive: true);
             }
             catch
             {
                 // Temporary cleanup is best effort.
             }
+        }
+    }
+
+    private static void ValidateArchive(string packagePath, string stagingDirectory)
+    {
+        using var archive = ZipFile.OpenRead(packagePath);
+        if (archive.Entries.Count == 0 || archive.Entries.Count > MaximumArchiveEntries)
+        {
+            throw new InvalidDataException("The update package contains an invalid number of entries.");
+        }
+
+        long expandedBytes = 0;
+        foreach (var entry in archive.Entries)
+        {
+            var relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
+            if (!string.IsNullOrWhiteSpace(relativePath))
+            {
+                _ = SafeCombine(stagingDirectory, relativePath);
+            }
+
+            expandedBytes = checked(expandedBytes + entry.Length);
+            if (expandedBytes > MaximumExpandedBytes)
+            {
+                throw new InvalidDataException("The expanded update package is too large.");
+            }
+        }
+    }
+
+    internal static void TryCleanupDownloadedPackage(string packagePath)
+    {
+        try
+        {
+            var updatesRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "EchoMinutes", "updates"))
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var packageDirectory = Path.GetFullPath(Path.GetDirectoryName(packagePath) ?? string.Empty)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var parentDirectory = Path.GetDirectoryName(packageDirectory)?.TrimEnd(
+                Path.DirectorySeparatorChar,
+                Path.AltDirectorySeparatorChar);
+
+            if (!string.Equals(parentDirectory, updatesRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (Directory.Exists(packageDirectory))
+            {
+                Directory.Delete(packageDirectory, recursive: true);
+            }
+        }
+        catch
+        {
+            // Temporary cleanup is best effort and must never hide update results.
         }
     }
 
@@ -192,6 +262,23 @@ internal static class Program
         values.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value)
             ? value
             : throw new ArgumentException($"Missing --{key} argument.");
+
+    internal static (string Caption, string Text) BuildFailureMessage(
+        string? language,
+        string error,
+        string logPath)
+    {
+        if (language?.StartsWith("zh", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return (
+                "更新失败",
+                $"EchoMinutes 无法完成更新。\n\n{error}\n\n详细日志：{logPath}");
+        }
+
+        return (
+            "Update failed",
+            $"EchoMinutes could not be updated.\n\n{error}\n\nDetails: {logPath}");
+    }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);

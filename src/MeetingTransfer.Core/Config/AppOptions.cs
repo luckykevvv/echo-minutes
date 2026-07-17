@@ -12,6 +12,7 @@ public sealed class AppOptions
 public sealed class UiOptions
 {
     public bool OnboardingCompleted { get; set; }
+    public string Language { get; set; } = "zh-CN";
 }
 
 public sealed class StorageOptions

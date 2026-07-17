@@ -1,7 +1,7 @@
 <Window x:Class="MeetingTransfer.App.UpdateWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="EchoMinutes update"
+        Title="{DynamicResource UpdateWindowTitle}"
         Width="620" Height="520"
         MinWidth="540" MinHeight="440"
         WindowStartupLocation="CenterOwner"
@@ -16,8 +16,8 @@
 
             <Border Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" CornerRadius="10,10,0,0">
                 <Grid>
-                    <TextBlock Text="EchoMinutes  /  UPDATE" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0" />
-                    <Button HorizontalAlignment="Right" Style="{StaticResource IconButton}" Content="&#xE8BB;" Click="Later_Click" Margin="0,0,2,0" />
+                    <TextBlock Text="{DynamicResource UpdateWindowHeader}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0" />
+                    <Button HorizontalAlignment="Right" Style="{StaticResource IconButton}" Content="{StaticResource WindowCloseIcon}" ToolTip="{DynamicResource LaterLabel}" Click="Later_Click" Margin="0,0,2,0" />
                 </Grid>
             </Border>
 
@@ -29,7 +29,7 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Text="UPDATE AVAILABLE" Style="{StaticResource EyebrowText}" Foreground="{StaticResource AccentBrush}" />
+                    <TextBlock Text="{DynamicResource UpdateAvailable}" Style="{StaticResource EyebrowText}" Foreground="{StaticResource AccentBrush}" />
                     <TextBlock x:Name="ReleaseTitleText" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="28" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap" />
                     <TextBlock x:Name="VersionText" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,7,0,0" />
                 </StackPanel>
@@ -40,7 +40,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <TextBlock Text="WHAT'S NEW" Style="{StaticResource EyebrowText}" />
+                        <TextBlock Text="{DynamicResource WhatsNew}" Style="{StaticResource EyebrowText}" />
                         <ScrollViewer Grid.Row="1" Margin="0,12,0,0" VerticalScrollBarVisibility="Auto">
                             <TextBlock x:Name="ReleaseNotesText" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" LineHeight="20" />
                         </ScrollViewer>
@@ -55,8 +55,8 @@
                     <ProgressBar x:Name="DownloadProgress" Minimum="0" Maximum="1" Height="4" Visibility="Collapsed" />
                     <TextBlock x:Name="StatusText" Grid.Row="1" Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,10,230,0" TextWrapping="Wrap" />
                     <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                        <Button x:Name="LaterButton" Content="Later" Width="92" Style="{StaticResource QuietButton}" Click="Later_Click" Margin="0,0,8,0" />
-                        <Button x:Name="InstallButton" Content="Download and update" Width="170" Style="{StaticResource AccentButton}" Click="Install_Click" />
+                        <Button x:Name="LaterButton" Content="{DynamicResource LaterLabel}" Width="92" Style="{StaticResource QuietButton}" Click="Later_Click" Margin="0,0,8,0" />
+                        <Button x:Name="InstallButton" Content="{DynamicResource DownloadUpdate}" Width="170" Style="{StaticResource AccentButton}" Click="Install_Click" />
                     </StackPanel>
                 </Grid>
             </Grid>

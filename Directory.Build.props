@@ -4,8 +4,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <VersionPrefix>1.0.0</VersionPrefix>
-    <Authors>Meeting Transfer contributors</Authors>
-    <Product>Meeting Transfer</Product>
+    <VersionPrefix>1.0.1</VersionPrefix>
+    <VersionSuffix>dev</VersionSuffix>
+    <Authors>EchoMinutes contributors</Authors>
+    <Product>EchoMinutes</Product>
   </PropertyGroup>
 </Project>

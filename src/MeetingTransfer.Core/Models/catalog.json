@@ -5,7 +5,7 @@
                        "id":  "whisper-tiny.en",
                        "family":  "Whisper.cpp",
                        "displayName":  "Whisper tiny.en (GGML, English)",
-                       "sizeBytes":  75600000,
+                       "sizeBytes":  77704715,
                        "languages":  [
                                          "en"
                                      ],
@@ -20,7 +20,7 @@
                                      {
                                          "name":  "ggml-tiny.en.bin",
                                          "url":  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin",
-                                         "sha256":  null,
+                                         "sha256":  "921E4CF8686FDD993DCD081A5DA5B6C365BFDE1162E72B08D75AC75289920B1F",
                                          "extract":  null
                                      }
                                  ],
@@ -31,11 +31,9 @@
                        "id":  "whisper-base",
                        "family":  "Whisper.cpp",
                        "displayName":  "Whisper base (GGML, multilingual)",
-                       "sizeBytes":  145000000,
+                       "sizeBytes":  147951465,
                        "languages":  [
-                                         "zh",
-                                         "en",
-                                         "bilingual"
+                                         "multilingual"
                                      ],
                        "task":  "transcribe",
                        "executionMode":  "offline",
@@ -48,7 +46,7 @@
                                      {
                                          "name":  "ggml-base.bin",
                                          "url":  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
-                                         "sha256":  null,
+                                         "sha256":  "60ED5BC3DD14EEA856493D334349B405782DDCAF0028D4B5DF4088345FBA2EFE",
                                          "extract":  null
                                      }
                                  ],
@@ -59,11 +57,9 @@
                        "id":  "whisper-small",
                        "family":  "Whisper.cpp",
                        "displayName":  "Whisper small (GGML, multilingual)",
-                       "sizeBytes":  470000000,
+                       "sizeBytes":  487601967,
                        "languages":  [
-                                         "zh",
-                                         "en",
-                                         "bilingual"
+                                         "multilingual"
                                      ],
                        "task":  "transcribe",
                        "executionMode":  "offline",
@@ -76,7 +72,7 @@
                                      {
                                          "name":  "ggml-small.bin",
                                          "url":  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
-                                         "sha256":  null,
+                                         "sha256":  "1BE3A9B2063867B937E64E2EC7483364A79917E157FA98C5D94B5C1FFFEA987B",
                                          "extract":  null
                                      }
                                  ],
@@ -89,9 +85,7 @@
                        "displayName":  "Whisper large-v3 turbo (GGML, Vulkan)",
                        "sizeBytes":  1624555275,
                        "languages":  [
-                                         "zh",
-                                         "en",
-                                         "bilingual"
+                                         "multilingual"
                                      ],
                        "task":  "transcribe",
                        "executionMode":  "offline",
@@ -115,7 +109,7 @@
                        "id":  "sense-voice-small",
                        "family":  "SenseVoice",
                        "displayName":  "SenseVoice Small (Alibaba, multilingual)",
-                       "sizeBytes":  230000000,
+                       "sizeBytes":  239549735,
                        "languages":  [
                                          "zh",
                                          "en",
@@ -132,14 +126,14 @@
                        "executable":  "models/sherpa-onnx/bin/sherpa-onnx-offline.exe",
                        "files":  [
                                      {
-                                         "name":  "model.onnx",
-                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/model.onnx",
-                                         "sha256":  null
+                                         "name":  "model.int8.onnx",
+                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/model.int8.onnx",
+                                         "sha256":  "C71F0CE00BEC95B07744E116345E33D8CBBE08CEF896382CF907BF4B51A2CD51"
                                      },
                                      {
                                          "name":  "tokens.txt",
                                          "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/tokens.txt",
-                                         "sha256":  null
+                                         "sha256":  "F449EB28DC567533D7FA59BE34E2ABCA8784F771850C78A47FB731A31429A1DC"
                                      }
                                  ],
                        "argumentsTemplate":  "--sense-voice-model=\"{Model}\" --tokens=\"{Tokens}\" --sense-voice-language=auto --sense-voice-use-itn=true --num-threads=2 \"{InputWav}\"",
@@ -149,7 +143,7 @@
                        "id":  "paraformer-large-zh",
                        "family":  "Paraformer",
                        "displayName":  "Paraformer-large (Chinese only)",
-                       "sizeBytes":  1000000000,
+                       "sizeBytes":  243446974,
                        "languages":  [
                                          "zh"
                                      ],
@@ -162,14 +156,14 @@
                        "executable":  "models/sherpa-onnx/bin/sherpa-onnx-offline.exe",
                        "files":  [
                                      {
-                                         "name":  "model.onnx",
-                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14/resolve/main/model.onnx",
-                                         "sha256":  null
+                                         "name":  "model.int8.onnx",
+                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14/resolve/main/model.int8.onnx",
+                                         "sha256":  "F36A0433BCF096BD6D6F11B80A3AC8BED110BDCA632FE0D731DF8D1A84475945"
                                      },
                                      {
                                          "name":  "tokens.txt",
                                          "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14/resolve/main/tokens.txt",
-                                         "sha256":  null
+                                         "sha256":  "59ABA8873A2ED1E122C25FEE421E25F283B63290EFBDE85C1F01A853D83CB6E6"
                                      }
                                  ],
                        "argumentsTemplate":  "--paraformer=\"{Model}\" --tokens=\"{Tokens}\" --num-threads=2 \"{InputWav}\"",
@@ -209,7 +203,7 @@
                                      },
                                      {
                                          "name":  "silero_vad.onnx",
-                                         "url":  "https://huggingface.co/csukuangfj/sherpa-onnx-silero-vad/resolve/main/silero_vad.onnx",
+                                         "url":  "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
                                          "sha256":  "9E2449E1087496D8D4CABA907F23E0BD3F78D91FA552479BB9C23AC09CBB1FD6"
                                      }
                                  ],

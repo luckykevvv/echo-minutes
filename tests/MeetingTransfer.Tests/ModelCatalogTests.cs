@@ -130,7 +130,7 @@ public sealed class ModelCatalogTests : IDisposable
             Files =
             [
                 new ModelFileEntry { Name = "qwen3-asr-conv-frontend.onnx", Url = "https://example.com/frontend" },
-                new ModelFileEntry { Name = "model.onnx", Url = "https://example.com/model" },
+                new ModelFileEntry { Name = "model.int8.onnx", Url = "https://example.com/model" },
                 new ModelFileEntry { Name = "tokens.txt", Url = "https://example.com/tokens" },
             ],
             ArgumentsTemplate = "--qwen3-asr-conv-frontend=\"{ConvFrontend}\" --sense-voice-model=\"{Model}\" --tokens=\"{Tokens}\" \"{InputWav}\""
@@ -147,7 +147,7 @@ public sealed class ModelCatalogTests : IDisposable
         var args = catalog.BuildArguments(model, "C:/input.wav");
 
         Assert.Contains("qwen3-asr-conv-frontend.onnx", args);
-        Assert.Contains("model.onnx", args);
+        Assert.Contains("model.int8.onnx", args);
         Assert.Contains("tokens.txt", args);
         Assert.DoesNotContain("{ConvFrontend}", args);
         Assert.DoesNotContain("{Model}", args);

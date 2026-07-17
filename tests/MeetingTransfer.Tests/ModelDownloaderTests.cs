@@ -120,6 +120,22 @@ public sealed class ModelDownloaderTests : IDisposable
         Assert.False(File.Exists(destination + ".part"));
     }
 
+    [Fact]
+    public async Task DownloadAsync_RejectsUnexpectedlyLargeBundleBeforeGet()
+    {
+        byte[] content = [1, 2, 3];
+        var model = MakeModel(content);
+        var catalog = new ModelCatalog(_tempDir);
+        var handler = new DownloadHandler(content, reportedLength: 600L * 1024 * 1024);
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new ModelDownloader(new HttpClient(handler)).DownloadAsync(
+                model, catalog, progress: null, CancellationToken.None));
+
+        Assert.Contains("allowed limit", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, handler.GetCount);
+    }
+
     private static ModelDescriptor MakeModel(byte[] content)
         => new()
         {
@@ -152,7 +168,10 @@ public sealed class ModelDownloaderTests : IDisposable
         return output.ToArray();
     }
 
-    private sealed class DownloadHandler(byte[] content, int failuresBeforeSuccess = 0) : HttpMessageHandler
+    private sealed class DownloadHandler(
+        byte[] content,
+        int failuresBeforeSuccess = 0,
+        long? reportedLength = null) : HttpMessageHandler
     {
         public int GetCount { get; private set; }
 
@@ -166,7 +185,7 @@ public sealed class ModelDownloaderTests : IDisposable
                 {
                     Content = new ByteArrayContent([])
                 };
-                head.Content.Headers.ContentLength = content.Length;
+                head.Content.Headers.ContentLength = reportedLength ?? content.Length;
                 return Task.FromResult(head);
             }
 

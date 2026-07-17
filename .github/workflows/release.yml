@@ -20,28 +20,48 @@ jobs:
         with:
           dotnet-version: 8.0.422
 
+      - name: Validate release tag
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') {
+            throw "Release tags must use the formal vMAJOR.MINOR.PATCH format; received '$tag'."
+          }
+          [IO.File]::AppendAllText(
+            $env:GITHUB_ENV,
+            "RELEASE_VERSION=$($Matches.version)`n",
+            [Text.UTF8Encoding]::new($false))
+
       - name: Restore
-        run: dotnet restore MeetingTransfer.sln
+        shell: pwsh
+        run: |
+          dotnet restore MeetingTransfer.sln `
+            -p:NuGetAudit=true -p:NuGetAuditMode=all `
+            '-warnaserror:NU1901;NU1902;NU1903;NU1904'
 
       - name: Build and test
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".TrimStart('v')
+          $version = $env:RELEASE_VERSION
           dotnet build MeetingTransfer.sln -c Release --no-restore -p:Version=$version
           dotnet test MeetingTransfer.sln -c Release --no-build --no-restore -p:Version=$version
 
       - name: Publish clean Windows package
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".TrimStart('v')
+          $version = $env:RELEASE_VERSION
           dotnet restore src/MeetingTransfer.App/MeetingTransfer.App.csproj `
-            -r win-x64 -p:Version=$version
+            -r win-x64 -p:Version=$version `
+            -p:NuGetAudit=true -p:NuGetAuditMode=all `
+            '-warnaserror:NU1901;NU1902;NU1903;NU1904'
           dotnet publish src/MeetingTransfer.App/MeetingTransfer.App.csproj `
             -c Release -r win-x64 --self-contained false --no-restore `
             -p:Version=$version -o artifacts/publish
 
           $modelExtensions = @('.onnx', '.gguf', '.bin', '.safetensors', '.pt', '.pth', '.tflite', '.ckpt', '.model')
-          $weights = Get-ChildItem artifacts/publish -Recurse -File | Where-Object { $_.Extension -in $modelExtensions }
+          $weights = Get-ChildItem artifacts/publish -Recurse -File | Where-Object {
+            $_.Extension -in $modelExtensions -or $_.Name -eq 'tokens.txt'
+          }
           if ($weights) {
             $weights.FullName | Write-Error
             throw "Release package contains model weights."
@@ -53,6 +73,48 @@ jobs:
           if ($runtimeData) {
             $runtimeData | Write-Error
             throw "Release package contains runtime user data."
+          }
+
+          $debugSymbols = Get-ChildItem artifacts/publish -Recurse -File -Filter '*.pdb'
+          if ($debugSymbols) {
+            $debugSymbols.FullName | Write-Error
+            throw "Release package contains debug symbols."
+          }
+
+          $versionedAssemblies = @(
+            'MeetingTransfer.App.dll',
+            'MeetingTransfer.Core.dll',
+            'Updater/EchoMinutes.Updater.dll'
+          )
+          foreach ($relativePath in $versionedAssemblies) {
+            $assemblyPath = Join-Path 'artifacts/publish' $relativePath
+            if (-not (Test-Path -LiteralPath $assemblyPath)) {
+              throw "Release package is missing $relativePath."
+            }
+            $assemblyVersion = [Reflection.AssemblyName]::GetAssemblyName(
+              (Resolve-Path -LiteralPath $assemblyPath)).Version.ToString(3)
+            if ($assemblyVersion -ne $version) {
+              throw "$relativePath has version $assemblyVersion; expected $version."
+            }
+          }
+
+          $requiredLicenses = @(
+            'FFmpeg-GPL-3.0.txt',
+            'whisper.cpp-MIT.txt',
+            'sherpa-onnx-Apache-2.0.txt',
+            'ONNX-Runtime-MIT.txt',
+            'NAudio-MIT.txt',
+            'SharpCompress-MIT.txt',
+            'Microsoft-dotnet-MIT.txt',
+            'SQLitePCLRaw-Apache-2.0.txt',
+            'SQLite-Public-Domain.txt'
+          )
+          $missingLicenses = $requiredLicenses | Where-Object {
+            -not (Test-Path -LiteralPath (Join-Path 'artifacts/publish/Licenses' $_))
+          }
+          if ($missingLicenses) {
+            $missingLicenses | Write-Error
+            throw "Release package is missing third-party license texts."
           }
 
           Compress-Archive -Path artifacts/publish/* -DestinationPath artifacts/echo-minutes-win-x64.zip -CompressionLevel Optimal
@@ -69,7 +131,7 @@ jobs:
       - name: Build Windows installer
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".TrimStart('v')
+          $version = $env:RELEASE_VERSION
           $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
           & $compiler "/DMyAppVersion=$version" installer/EchoMinutes.iss
           if ($LASTEXITCODE -ne 0) {
@@ -79,6 +141,11 @@ jobs:
           $installer = 'artifacts/echo-minutes-setup-x64.exe'
           if (-not (Test-Path -LiteralPath $installer)) {
             throw "The Windows installer was not generated."
+          }
+
+          $installerVersion = (Get-Item -LiteralPath $installer).VersionInfo.ProductVersion.Trim()
+          if ($installerVersion -ne $version) {
+            throw "Installer has version $installerVersion; expected $version."
           }
 
           $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()

@@ -5,4 +5,7 @@
     <AssemblyName>EchoMinutes.Updater</AssemblyName>
     <RootNamespace>EchoMinutes.Updater</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MeetingTransfer.App.SmokeTests" />
+  </ItemGroup>
 </Project>

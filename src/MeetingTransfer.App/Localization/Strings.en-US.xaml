@@ -1,0 +1,168 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+  <sys:String x:Key="SettingsTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Preferences</sys:String>
+  <sys:String x:Key="WindowMinimizeTooltip" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Minimize</sys:String>
+  <sys:String x:Key="WindowMaximizeTooltip" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Maximize</sys:String>
+  <sys:String x:Key="WindowCloseTooltip" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Close</sys:String>
+  <sys:String x:Key="BackWorkspace" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">←  Back to workspace</sys:String>
+  <sys:String x:Key="GeneralTab" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">General</sys:String>
+  <sys:String x:Key="ModelsTab" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Speech models</sys:String>
+  <sys:String x:Key="ToolsTab" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Tools</sys:String>
+  <sys:String x:Key="UpdatesTab" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Updates</sys:String>
+  <sys:String x:Key="AppLanguage" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Application language</sys:String>
+  <sys:String x:Key="AppLanguageHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Changes are previewed immediately and saved with your settings.</sys:String>
+  <sys:String x:Key="ModelLibrary" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">MODEL LIBRARY</sys:String>
+  <sys:String x:Key="ModelLibraryHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Offline, realtime, and feature resources</sys:String>
+  <sys:String x:Key="ModelDetails" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">MODEL DETAILS</sys:String>
+  <sys:String x:Key="SizeLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">SIZE</sys:String>
+  <sys:String x:Key="ModeLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">MODE</sys:String>
+  <sys:String x:Key="DescriptionLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">DESCRIPTION</sys:String>
+  <sys:String x:Key="SpeedLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">SPEED</sys:String>
+  <sys:String x:Key="AccuracyLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">ACCURACY</sys:String>
+  <sys:String x:Key="DeleteLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Delete</sys:String>
+  <sys:String x:Key="CancelLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Cancel</sys:String>
+  <sys:String x:Key="SaveLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Save changes</sys:String>
+  <sys:String x:Key="FfmpegExecutable" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">ffmpeg executable</sys:String>
+  <sys:String x:Key="RealtimeExecutable" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Realtime executable</sys:String>
+  <sys:String x:Key="RealtimeArguments" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Realtime arguments</sys:String>
+  <sys:String x:Key="OfflineLanguage" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Offline transcription language</sys:String>
+  <sys:String x:Key="OfflineLanguageBilingual" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Chinese / English</sys:String>
+  <sys:String x:Key="OfflineLanguageChinese" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Chinese</sys:String>
+  <sys:String x:Key="OfflineLanguageEnglish" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">English</sys:String>
+  <sys:String x:Key="BrowseLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Browse</sys:String>
+  <sys:String x:Key="ExecutableModelFiles" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Executables and model files</sys:String>
+  <sys:String x:Key="AllFiles" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">All files</sys:String>
+  <sys:String x:Key="ApplicationUpdates" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">APPLICATION UPDATES</sys:String>
+  <sys:String x:Key="InstalledVersion" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Installed version  </sys:String>
+  <sys:String x:Key="AutomaticUpdateHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Updates are checked automatically after startup.</sys:String>
+  <sys:String x:Key="UpdateSource" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Source: github.com/luckykevvv/echo-minutes/releases</sys:String>
+  <sys:String x:Key="CheckForUpdates" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Check for updates</sys:String>
+  <sys:String x:Key="SettingsStorageHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Changes are saved beside the application.</sys:String>
+  <sys:String x:Key="UpdateWindowTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">EchoMinutes update</sys:String>
+  <sys:String x:Key="UpdateWindowHeader" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">EchoMinutes  /  UPDATE</sys:String>
+  <sys:String x:Key="UpdateAvailable" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">UPDATE AVAILABLE</sys:String>
+  <sys:String x:Key="WhatsNew" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">WHAT'S NEW</sys:String>
+  <sys:String x:Key="LaterLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Later</sys:String>
+  <sys:String x:Key="DownloadUpdate" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Download and update</sys:String>
+  <sys:String x:Key="UpdateCurrentVersion" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">{0}  ·  current {1}</sys:String>
+  <sys:String x:Key="UpdateVerificationHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">{0} · SHA256 verified before installation</sys:String>
+  <sys:String x:Key="UpdateDownloading" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Downloading update…</sys:String>
+  <sys:String x:Key="UpdateDownloadingProgress" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Downloading update… {0:P0}</sys:String>
+  <sys:String x:Key="UpdateVerifiedRestart" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Download verified. EchoMinutes will restart.</sys:String>
+  <sys:String x:Key="UpdateDownloadCancelled" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Update download cancelled.</sys:String>
+  <sys:String x:Key="UpdateDownloadFailed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Update download failed.</sys:String>
+  <sys:String x:Key="UpdateFailedTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Update failed</sys:String>
+  <sys:String x:Key="UpdaterMissing" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">The EchoMinutes updater is missing from this installation.</sys:String>
+  <sys:String x:Key="UpdateCheckRunning" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">An update check is already running.</sys:String>
+  <sys:String x:Key="UpdateChecking" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Checking GitHub Releases…</sys:String>
+  <sys:String x:Key="UpdateUpToDateStatus" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">{0} is up to date.</sys:String>
+  <sys:String x:Key="UpdateLatestMessage" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">You already have the latest version.</sys:String>
+  <sys:String x:Key="UpdateAvailableStatus" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">{0} is available.</sys:String>
+  <sys:String x:Key="UpdateClosing" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Update downloaded. Closing EchoMinutes…</sys:String>
+  <sys:String x:Key="UpdateCheckCancelled" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Update check cancelled.</sys:String>
+  <sys:String x:Key="UpdateCheckFailed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Could not check for updates.</sys:String>
+  <sys:String x:Key="UpdateCheckFailedTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Update check failed</sys:String>
+  <sys:String x:Key="OnboardingLocalFirst" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">LOCAL-FIRST</sys:String>
+  <sys:String x:Key="OnboardingHero" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Keep meetings on your computer</sys:String>
+  <sys:String x:Key="OnboardingHeroHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Recording, transcription, and exports stay on this device by default.</sys:String>
+  <sys:String x:Key="StepOneLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Before you begin</sys:String>
+  <sys:String x:Key="StepTwoLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Prepare models</sys:String>
+  <sys:String x:Key="StepThreeLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Choose workflow</sys:String>
+  <sys:String x:Key="WelcomeTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Three minutes to your first transcript</sys:String>
+  <sys:String x:Key="ModelSetupTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Choose and download the models you need</sys:String>
+  <sys:String x:Key="ReadyTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Start with your first meeting</sys:String>
+  <sys:String x:Key="SkipGuide" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Skip guide</sys:String>
+  <sys:String x:Key="PreviousStep" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Back</sys:String>
+  <sys:String x:Key="NextStep" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Next</sys:String>
+  <sys:String x:Key="StartUsing" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Start using</sys:String>
+  <sys:String x:Key="FirstRunTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">  /  FIRST RUN</sys:String>
+  <sys:String x:Key="WelcomeWindowTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Welcome to EchoMinutes</sys:String>
+  <sys:String x:Key="StepOneHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Local and private</sys:String>
+  <sys:String x:Key="StepTwoHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Download by use</sys:String>
+  <sys:String x:Key="StepThreeHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Realtime or offline</sys:String>
+  <sys:String x:Key="NoBundledModelsHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">No models are bundled with the installer. The app only connects upstream when you choose to download one.</sys:String>
+  <sys:String x:Key="WelcomeEyebrow" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">WELCOME</sys:String>
+  <sys:String x:Key="WelcomeDescription" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">EchoMinutes has two independent workflows: live recording and offline import. Download only the models you plan to use.</sys:String>
+  <sys:String x:Key="LocalStorageTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Stored locally</sys:String>
+  <sys:String x:Key="LocalStorageDescription" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">The database, recordings, and exports stay beside the app by default. Meeting content is never uploaded automatically.</sys:String>
+  <sys:String x:Key="DownloadOnDemandTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Download on demand</sys:String>
+  <sys:String x:Key="DownloadOnDemandDescription" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">The release package contains runtimes only. Choose and download the models you need during setup without wasting disk space.</sys:String>
+  <sys:String x:Key="ModelSetupEyebrow" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">MODEL SETUP</sys:String>
+  <sys:String x:Key="ModelSetupDescription" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">The first offline model becomes the default automatically. Realtime and speaker models are optional.</sys:String>
+  <sys:String x:Key="ModelRequiredHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Install at least one offline or realtime transcription model to continue, or skip the guide and configure models later.</sys:String>
+  <sys:String x:Key="ReadyEyebrow" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">READY</sys:String>
+  <sys:String x:Key="LiveWorkflow" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">LIVE RECORDING</sys:String>
+  <sys:String x:Key="LiveWorkflowTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Choose sources → Start</sys:String>
+  <sys:String x:Key="LiveWorkflowDescription" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Capture system audio and microphone together. The session is saved automatically when recording stops.</sys:String>
+  <sys:String x:Key="ImportWorkflow" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">OFFLINE IMPORT</sys:String>
+  <sys:String x:Key="ImportWorkflowTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Choose speaker count → Import</sys:String>
+  <sys:String x:Key="ImportWorkflowDescription" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Common audio and video formats are supported. Rename or merge speakers after transcription.</sys:String>
+  <sys:String x:Key="ModelStateSyncedHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Model status is synced to the workspace. You can download or switch models later from Settings.</sys:String>
+  <sys:String x:Key="InitialSetup" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">  Initial setup</sys:String>
+  <sys:String x:Key="OnboardingWaitDownload" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Wait for the current download to finish, or cancel it from the model button.</sys:String>
+  <sys:String x:Key="OnboardingInstallModel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Choose and install at least one offline or realtime transcription model first. Speaker diarization cannot transcribe by itself. You can also skip the guide and download a model later.</sys:String>
+  <sys:String x:Key="OnboardingReadyCount" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">{0} model(s) ready. An offline model marked Active can be used for imports.</sys:String>
+  <sys:String x:Key="FinishOnboardingAutomation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Finish setup and start using EchoMinutes</sys:String>
+  <sys:String x:Key="NextOnboardingAutomation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Go to the next step</sys:String>
+  <sys:String x:Key="SaveSettingsFailed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Could not save settings</sys:String>
+  <sys:String x:Key="ReloadSettingsFailed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Could not reload settings</sys:String>
+  <sys:String x:Key="EngineLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Engine</sys:String>
+  <sys:String x:Key="Category.Offline" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">OFFLINE TRANSCRIPTION</sys:String>
+  <sys:String x:Key="Category.Realtime" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">REALTIME TRANSCRIPTION</sys:String>
+  <sys:String x:Key="Category.Features" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">FEATURE RESOURCES</sys:String>
+  <sys:String x:Key="Mode.offline" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Offline</sys:String>
+  <sys:String x:Key="Mode.online" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Realtime</sys:String>
+  <sys:String x:Key="Mode.resource" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Feature resource</sys:String>
+  <sys:String x:Key="Language.zh" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Chinese</sys:String>
+  <sys:String x:Key="Language.en" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">English</sys:String>
+  <sys:String x:Key="Language.bilingual" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Chinese / English</sys:String>
+  <sys:String x:Key="Language.multilingual" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Multilingual</sys:String>
+  <sys:String x:Key="Language.ja" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Japanese</sys:String>
+  <sys:String x:Key="Language.ko" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Korean</sys:String>
+  <sys:String x:Key="Language.yue" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Cantonese</sys:String>
+  <sys:String x:Key="ModelAction.Download" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Download</sys:String>
+  <sys:String x:Key="ModelAction.Cancel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Cancel download</sys:String>
+  <sys:String x:Key="ModelAction.UseDefault" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Use as default</sys:String>
+  <sys:String x:Key="ModelAction.InstalledRealtime" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Installed for live recording</sys:String>
+  <sys:String x:Key="ModelAction.InstalledFeature" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Installed for speaker labels</sys:String>
+  <sys:String x:Key="ModelAction.Active" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">✓ Active</sys:String>
+  <sys:String x:Key="ModelAction.Retry" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Retry</sys:String>
+  <sys:String x:Key="ModelStatus.Starting" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Starting download…</sys:String>
+  <sys:String x:Key="ModelStatus.Progress" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Downloaded {0}%</sys:String>
+  <sys:String x:Key="ModelStatus.Installed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Installed.</sys:String>
+  <sys:String x:Key="ModelStatus.Cancelled" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Download cancelled.</sys:String>
+  <sys:String x:Key="ModelStatus.DeleteFailed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Delete failed: {0}</sys:String>
+  <sys:String x:Key="ModelStatus.DownloadFailed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Download failed: {0}</sys:String>
+
+  <sys:String x:Key="Model.whisper-tiny.en.Name" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Whisper tiny.en (GGML, English)</sys:String>
+  <sys:String x:Key="Model.whisper-tiny.en.Description" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Smallest English-only whisper.cpp model. Best for quick English drafts when speed matters more than accuracy. Runs through the included Vulkan runtime on AMD, Intel, and NVIDIA GPUs on Windows.</sys:String>
+  <sys:String x:Key="Model.whisper-tiny.en.Speed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Very fast. ~32x real-time on GPU (Vulkan). Roughly 8–10x slower on CPU fallback.</sys:String>
+  <sys:String x:Key="Model.whisper-tiny.en.Accuracy" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Lowest Whisper accuracy. Not suitable for Chinese or bilingual meetings.</sys:String>
+  <sys:String x:Key="Model.whisper-base.Name" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Whisper base (GGML, multilingual)</sys:String>
+  <sys:String x:Key="Model.whisper-base.Description" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Small multilingual whisper.cpp model. A compact option for Chinese, English, and mixed-language drafts. Runs through the included Vulkan runtime on AMD, Intel, and NVIDIA GPUs on Windows.</sys:String>
+  <sys:String x:Key="Model.whisper-base.Speed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Fast. ~20x real-time on GPU (Vulkan). Roughly 8–10x slower on CPU fallback.</sys:String>
+  <sys:String x:Key="Model.whisper-base.Accuracy" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Acceptable for clean speech, but weaker on long meetings, noise, accents, and code-switching.</sys:String>
+  <sys:String x:Key="Model.whisper-small.Name" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Whisper small (GGML, multilingual)</sys:String>
+  <sys:String x:Key="Model.whisper-small.Description" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Mid-size multilingual whisper.cpp model. Better accuracy than base while remaining much smaller than large-v3-turbo. Runs through the included Vulkan runtime on AMD, Intel, and NVIDIA GPUs on Windows.</sys:String>
+  <sys:String x:Key="Model.whisper-small.Speed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Moderate. ~5x real-time on GPU (Vulkan). Roughly 8–10x slower on CPU fallback.</sys:String>
+  <sys:String x:Key="Model.whisper-small.Accuracy" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Good for everyday Chinese-English audio, but not as robust as large-v3-turbo.</sys:String>
+  <sys:String x:Key="Model.whisper-large-v3-turbo.Name" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Whisper large-v3 turbo (GGML, Vulkan)</sys:String>
+  <sys:String x:Key="Model.whisper-large-v3-turbo.Description" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Recommended whisper.cpp model for offline file transcription. Download it from Settings after installation. Runs through Vulkan on AMD, Intel, and NVIDIA GPUs and provides strong multilingual and Chinese-English code-switched accuracy.</sys:String>
+  <sys:String x:Key="Model.whisper-large-v3-turbo.Speed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">About 30 seconds for five minutes of audio on GPU (Vulkan). Roughly 5–10x slower on CPU fallback.</sys:String>
+  <sys:String x:Key="Model.whisper-large-v3-turbo.Accuracy" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Excellent multilingual accuracy for Chinese-English content. Recommended default for imported meetings on GPU.</sys:String>
+  <sys:String x:Key="Model.sense-voice-small.Name" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">SenseVoice Small (Alibaba, multilingual)</sys:String>
+  <sys:String x:Key="Model.sense-voice-small.Description" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Alibaba SenseVoice-Small. Outputs emotion, event, and language ID tags in addition to text. Chinese and Cantonese accuracy rivals Whisper large-v3. Language coverage is limited, and this build currently uses CPU only.</sys:String>
+  <sys:String x:Key="Model.sense-voice-small.Speed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">CPU only: ~10x real-time. GPU acceleration requires a self-built sherpa-onnx with DirectML.</sys:String>
+  <sys:String x:Key="Model.sense-voice-small.Accuracy" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Excellent on Chinese and Cantonese. Weaker on long English-only content than Whisper large-v3.</sys:String>
+  <sys:String x:Key="Model.paraformer-large-zh.Name" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Paraformer-large (Chinese only)</sys:String>
+  <sys:String x:Key="Model.paraformer-large-zh.Description" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Alibaba FunASR Paraformer-large for Chinese-only offline ASR. Strong punctuation, text normalization, and number handling. Not suitable for English or code-switching; this build currently uses CPU only.</sys:String>
+  <sys:String x:Key="Model.paraformer-large-zh.Speed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">CPU only: ~3x real-time. GPU acceleration requires a self-built sherpa-onnx with DirectML.</sys:String>
+  <sys:String x:Key="Model.paraformer-large-zh.Accuracy" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Excellent for pure Chinese. Not suitable for code-switched or English content.</sys:String>
+  <sys:String x:Key="Model.streaming-paraformer-bilingual.Name" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Paraformer streaming (Chinese / English, realtime)</sys:String>
+  <sys:String x:Key="Model.streaming-paraformer-bilingual.Description" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Required for live recording. It is less accurate than offline Whisper or SenseVoice, but produces partial results every few seconds for the live transcript. This build currently uses CPU only.</sys:String>
+  <sys:String x:Key="Model.streaming-paraformer-bilingual.Speed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">CPU only: streaming with sub-second latency per audio chunk.</sys:String>
+  <sys:String x:Key="Model.streaming-paraformer-bilingual.Accuracy" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Suitable for live preview; re-transcribe the final recording offline with a stronger model.</sys:String>
+  <sys:String x:Key="Model.speaker-diarization.Name" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Speaker diarization (pyannote + 3D-Speaker)</sys:String>
+  <sys:String x:Key="Model.speaker-diarization.Description" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Required to assign Speaker 1, Speaker 2, and other labels to imported recordings. Includes pyannote segmentation and a 3D-Speaker ERes2Net voice-embedding model.</sys:String>
+  <sys:String x:Key="Model.speaker-diarization.Speed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">CPU post-processing after offline transcription.</sys:String>
+  <sys:String x:Key="Model.speaker-diarization.Accuracy" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Speaker turns are clustered from voice embeddings; attribution around rapid speaker changes remains approximate.</sys:String>
+</ResourceDictionary>

@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Windows;
+using MeetingTransfer.App.Localization;
 using MeetingTransfer.Core.Updates;
 
 namespace MeetingTransfer.App.Updates;
@@ -23,7 +25,17 @@ public sealed class UpdateCoordinator
         _releaseClient = releaseClient ?? new GitHubReleaseClient();
     }
 
-    public static string CurrentVersionText => $"v{GitHubReleaseClient.CurrentVersion.ToString(3)}";
+    public static string CurrentVersionText
+    {
+        get
+        {
+            var informationalVersion = typeof(GitHubReleaseClient).Assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+                .InformationalVersion
+                .Split('+')[0];
+            return $"v{(string.IsNullOrWhiteSpace(informationalVersion) ? GitHubReleaseClient.CurrentVersion.ToString(3) : informationalVersion)}";
+        }
+    }
 
     public async Task<UpdateCheckOutcome> CheckAndPromptAsync(
         Window owner,
@@ -33,26 +45,26 @@ public sealed class UpdateCoordinator
     {
         if (!await CheckLock.WaitAsync(0, cancellationToken).ConfigureAwait(true))
         {
-            status?.Invoke("An update check is already running.");
+            status?.Invoke(LocalizationManager.Text("UpdateCheckRunning"));
             return UpdateCheckOutcome.Failed;
         }
 
         try
         {
-            status?.Invoke("Checking GitHub Releases…");
+            status?.Invoke(LocalizationManager.Text("UpdateChecking"));
             var release = await _releaseClient.CheckForUpdateAsync(cancellationToken).ConfigureAwait(true);
             if (release is null)
             {
-                status?.Invoke($"{CurrentVersionText} is up to date.");
+                status?.Invoke(LocalizationManager.Format("UpdateUpToDateStatus", CurrentVersionText));
                 if (showUpToDate)
                 {
-                    MessageBox.Show(owner, "You already have the latest version.", "EchoMinutes update", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(owner, LocalizationManager.Text("UpdateLatestMessage"), LocalizationManager.Text("UpdateWindowTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
                 }
 
                 return UpdateCheckOutcome.UpToDate;
             }
 
-            status?.Invoke($"{release.TagName} is available.");
+            status?.Invoke(LocalizationManager.Format("UpdateAvailableStatus", release.TagName));
             var updateWindow = new UpdateWindow(release, _releaseClient) { Owner = owner };
             updateWindow.ShowDialog();
             if (!updateWindow.InstallReady)
@@ -61,7 +73,7 @@ public sealed class UpdateCoordinator
             }
 
             LaunchUpdater(updateWindow.PackagePath!);
-            status?.Invoke("Update downloaded. Closing EchoMinutes…");
+            status?.Invoke(LocalizationManager.Text("UpdateClosing"));
             if (owner != Application.Current.MainWindow)
             {
                 owner.Close();
@@ -72,15 +84,15 @@ public sealed class UpdateCoordinator
         }
         catch (OperationCanceledException)
         {
-            status?.Invoke("Update check cancelled.");
+            status?.Invoke(LocalizationManager.Text("UpdateCheckCancelled"));
             return UpdateCheckOutcome.Failed;
         }
         catch (Exception ex)
         {
-            status?.Invoke("Could not check for updates.");
+            status?.Invoke(LocalizationManager.Text("UpdateCheckFailed"));
             if (showUpToDate)
             {
-                MessageBox.Show(owner, ex.Message, "Update check failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(owner, ex.Message, LocalizationManager.Text("UpdateCheckFailedTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
 
             return UpdateCheckOutcome.Failed;
@@ -97,7 +109,7 @@ public sealed class UpdateCoordinator
         var updaterExecutable = Path.Combine(sourceDirectory, "EchoMinutes.Updater.exe");
         if (!File.Exists(updaterExecutable))
         {
-            throw new FileNotFoundException("The EchoMinutes updater is missing from this installation.", updaterExecutable);
+            throw new FileNotFoundException(LocalizationManager.Text("UpdaterMissing"), updaterExecutable);
         }
 
         var temporaryDirectory = Path.Combine(Path.GetTempPath(), "EchoMinutes", "updater", Guid.NewGuid().ToString("N"));
@@ -113,7 +125,8 @@ public sealed class UpdateCoordinator
             "--package", Quote(packagePath),
             "--target", Quote(AppContext.BaseDirectory),
             "--app", Quote(appExecutable),
-            "--pid", Environment.ProcessId.ToString());
+            "--pid", Environment.ProcessId.ToString(),
+            "--language", Quote(LocalizationManager.CurrentLanguage));
         Process.Start(new ProcessStartInfo(temporaryUpdater, arguments)
         {
             UseShellExecute = false,

@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using MeetingTransfer.App.Configuration;
+using MeetingTransfer.App.Localization;
 using MeetingTransfer.App.ViewModels;
 using MeetingTransfer.App.Updates;
 using MeetingTransfer.Core.Transcripts;
@@ -19,7 +21,61 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        DataContext = new MainWindowViewModel();
+        var viewModel = new MainWindowViewModel();
+        viewModel.SettingsRequested += ViewModel_SettingsRequested;
+        DataContext = viewModel;
+    }
+
+    private void ViewModel_SettingsRequested(object? sender, EventArgs e)
+    {
+        if (SettingsHost.Visibility == Visibility.Visible)
+        {
+            return;
+        }
+
+        var settingsView = new SettingsView(new SettingsFileService());
+        settingsView.SettingsSaved += SettingsView_SettingsSaved;
+        settingsView.CloseRequested += SettingsView_CloseRequested;
+
+        SettingsHost.Children.Clear();
+        SettingsHost.Children.Add(settingsView);
+        WorkspaceView.Visibility = Visibility.Collapsed;
+        TitleContextText.Visibility = Visibility.Collapsed;
+        SettingsTitleText.Visibility = Visibility.Visible;
+        SettingsHost.Visibility = Visibility.Visible;
+    }
+
+    private void SettingsView_SettingsSaved(object? sender, EventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        try
+        {
+            viewModel.ReloadSettings();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, LocalizationManager.Text("ReloadSettingsFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void SettingsView_CloseRequested(object? sender, EventArgs e)
+    {
+        if (sender is SettingsView settingsView)
+        {
+            settingsView.SettingsSaved -= SettingsView_SettingsSaved;
+            settingsView.CloseRequested -= SettingsView_CloseRequested;
+            settingsView.Dispose();
+        }
+
+        SettingsHost.Visibility = Visibility.Collapsed;
+        SettingsHost.Children.Clear();
+        SettingsTitleText.Visibility = Visibility.Collapsed;
+        TitleContextText.Visibility = Visibility.Visible;
+        WorkspaceView.Visibility = Visibility.Visible;
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e)
@@ -117,6 +173,14 @@ public partial class MainWindow : Window
         IsEnabled = false;
         try
         {
+            foreach (var settingsView in SettingsHost.Children.OfType<SettingsView>().ToArray())
+            {
+                settingsView.SettingsSaved -= SettingsView_SettingsSaved;
+                settingsView.CloseRequested -= SettingsView_CloseRequested;
+                settingsView.Dispose();
+            }
+            SettingsHost.Children.Clear();
+
             if (DataContext is MainWindowViewModel viewModel)
             {
                 await viewModel.ShutdownAsync().ConfigureAwait(true);

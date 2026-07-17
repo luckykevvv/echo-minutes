@@ -170,7 +170,8 @@ public sealed class ModelCatalog
         }
 
         if (string.Equals(Path.GetExtension(fileName), ".bin", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(fileName, "model.onnx", StringComparison.OrdinalIgnoreCase) ||
+            (fileName.StartsWith("model.", StringComparison.OrdinalIgnoreCase) &&
+             string.Equals(Path.GetExtension(fileName), ".onnx", StringComparison.OrdinalIgnoreCase)) ||
             normalized.EndsWith("modelonnx", StringComparison.Ordinal))
         {
             yield return "Model";

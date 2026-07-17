@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using MeetingTransfer.App.Configuration;
+using MeetingTransfer.App.Localization;
 using MeetingTransfer.App.ViewModels;
 using MeetingTransfer.Core.Models;
 
@@ -12,14 +13,20 @@ public partial class OnboardingWindow : Window
 {
     private readonly FrameworkElement[] _steps;
     private readonly ModelCardListViewModel _modelCards;
+    private readonly SettingsFileService _settingsFileService;
+    private readonly RuntimeSettings _settings;
     private int _stepIndex;
+    private bool _initialized;
 
     public OnboardingWindow(SettingsFileService settingsFileService, ModelCatalog? modelCatalog = null)
     {
+        _settingsFileService = settingsFileService;
         InitializeComponent();
-        var settings = settingsFileService.Load();
+        _settings = settingsFileService.Load();
+        OnboardingLanguageBox.ItemsSource = LocalizationManager.SupportedLanguages;
+        OnboardingLanguageBox.SelectedValue = LocalizationManager.Normalize(_settings.App.Ui.Language);
         var catalog = modelCatalog ?? new ModelCatalog();
-        _modelCards = new ModelCardListViewModel(catalog, settingsFileService, settings.Models.ActiveModelId);
+        _modelCards = new ModelCardListViewModel(catalog, settingsFileService, _settings.Models.ActiveModelId);
         _modelCards.PrimaryActionCommand = new RelayCommand(async card =>
         {
             if (card is not ModelCardViewModel modelCard)
@@ -45,6 +52,7 @@ public partial class OnboardingWindow : Window
         _modelCards.DeleteCommand = new RelayCommand(_ => Task.CompletedTask);
         DataContext = _modelCards;
         _steps = [StepOne, StepTwo, StepThree];
+        _initialized = true;
         ShowStep(0, animate: false);
     }
 
@@ -54,14 +62,14 @@ public partial class OnboardingWindow : Window
         {
             if (_modelCards.Cards.Any(card => card.IsDownloading))
             {
-                ModelSetupStatus.Text = "请等待当前下载完成，或在模型按钮上取消下载。";
+                ModelSetupStatus.Text = LocalizationManager.Text("OnboardingWaitDownload");
                 ModelSetupStatus.Foreground = (System.Windows.Media.Brush)FindResource("WarningBrush");
                 return;
             }
 
-            if (!_modelCards.Cards.Any(card => card.IsInstalled || card.IsActive))
+            if (!HasInstalledTranscriptionModel())
             {
-                ModelSetupStatus.Text = "请先选择并安装至少一个模型；如果暂时不下载，可以跳过引导。";
+                ModelSetupStatus.Text = LocalizationManager.Text("OnboardingInstallModel");
                 ModelSetupStatus.Foreground = (System.Windows.Media.Brush)FindResource("WarningBrush");
                 return;
             }
@@ -95,6 +103,7 @@ public partial class OnboardingWindow : Window
     protected override void OnClosing(CancelEventArgs e)
     {
         CancelDownloads();
+        _modelCards.Dispose();
         base.OnClosing(e);
     }
 
@@ -130,9 +139,11 @@ public partial class OnboardingWindow : Window
 
         StepCounter.Text = $"{_stepIndex + 1:00} / {_steps.Length:00}";
         BackButton.Visibility = _stepIndex == 0 ? Visibility.Collapsed : Visibility.Visible;
-        NextButton.Content = _stepIndex == _steps.Length - 1 ? "开始使用" : "下一步";
+        NextButton.Content = LocalizationManager.Text(_stepIndex == _steps.Length - 1 ? "StartUsing" : "NextStep");
         NextButton.SetValue(System.Windows.Automation.AutomationProperties.NameProperty,
-            _stepIndex == _steps.Length - 1 ? "完成引导并开始使用" : "进入下一步");
+            LocalizationManager.Text(_stepIndex == _steps.Length - 1
+                ? "FinishOnboardingAutomation"
+                : "NextOnboardingAutomation"));
 
         var badges = new[] { StepBadgeOne, StepBadgeTwo, StepBadgeThree };
         var labels = new[] { StepLabelOne, StepLabelTwo, StepLabelThree };
@@ -156,19 +167,45 @@ public partial class OnboardingWindow : Window
     private void UpdateModelSetupStatus()
     {
         var installed = _modelCards.Cards.Count(card => card.IsInstalled || card.IsActive);
-        ModelSetupStatus.Text = installed == 0
-            ? "至少安装一个模型才能继续；也可以跳过引导，稍后再设置。"
-            : $"已准备 {installed} 个模型。离线模型标记为 Active 时即可用于导入。";
-        ModelSetupStatus.Foreground = installed == 0
+        ModelSetupStatus.Text = !HasInstalledTranscriptionModel()
+            ? LocalizationManager.Text("ModelRequiredHint")
+            : LocalizationManager.Format("OnboardingReadyCount", installed);
+        ModelSetupStatus.Foreground = !HasInstalledTranscriptionModel()
             ? (System.Windows.Media.Brush)FindResource("SubtleBrush")
             : (System.Windows.Media.Brush)FindResource("SuccessBrush");
     }
+
+    private bool HasInstalledTranscriptionModel()
+        => _modelCards.Cards.Any(card =>
+            (card.IsInstalled || card.IsActive) &&
+            (string.Equals(card.Model.ExecutionMode, "offline", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(card.Model.ExecutionMode, "online", StringComparison.OrdinalIgnoreCase)));
 
     private void CancelDownloads()
     {
         foreach (var card in _modelCards.Cards.Where(card => card.IsDownloading))
         {
             card.CancelDownload();
+        }
+    }
+
+    private void OnboardingLanguageBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (OnboardingLanguageBox.SelectedValue is not string language)
+        {
+            return;
+        }
+
+        var normalized = LocalizationManager.Normalize(language);
+        _settings.App.Ui.Language = normalized;
+        LocalizationManager.Apply(normalized);
+        var latest = _settingsFileService.Load();
+        latest.App.Ui.Language = normalized;
+        _settingsFileService.Save(latest);
+        if (_initialized)
+        {
+            ShowStep(_stepIndex, animate: false);
+            UpdateModelSetupStatus();
         }
     }
 }

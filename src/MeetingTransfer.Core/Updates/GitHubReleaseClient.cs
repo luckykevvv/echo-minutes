@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -24,6 +25,7 @@ public sealed class GitHubReleaseClient
     public const string PackageAssetName = "echo-minutes-win-x64.zip";
     public const string ChecksumAssetName = PackageAssetName + ".sha256";
     private const long MaximumPackageBytes = 1024L * 1024 * 1024;
+    private const int MaximumChecksumBytes = 16 * 1024;
     private static readonly Uri LatestReleaseUri = new($"https://api.github.com/repos/{Repository}/releases/latest");
     private static readonly Regex Sha256Pattern = new("(?i)\\b[0-9a-f]{64}\\b", RegexOptions.Compiled);
     private readonly HttpClient _httpClient;
@@ -152,7 +154,39 @@ public sealed class GitHubReleaseClient
                 }
             }
 
-            var checksumText = await _httpClient.GetStringAsync(release.Checksum.DownloadUrl, cancellationToken).ConfigureAwait(false);
+            using var checksumResponse = await _httpClient.GetAsync(
+                release.Checksum.DownloadUrl,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken).ConfigureAwait(false);
+            checksumResponse.EnsureSuccessStatusCode();
+            if (checksumResponse.Content.Headers.ContentLength is long checksumLength &&
+                checksumLength > MaximumChecksumBytes)
+            {
+                throw new InvalidDataException("The release checksum file is too large.");
+            }
+
+            await using var checksumStream = await checksumResponse.Content
+                .ReadAsStreamAsync(cancellationToken)
+                .ConfigureAwait(false);
+            var checksumBuffer = new byte[MaximumChecksumBytes + 1];
+            var checksumBytes = 0;
+            while (checksumBytes < checksumBuffer.Length)
+            {
+                var read = await checksumStream.ReadAsync(
+                    checksumBuffer.AsMemory(checksumBytes),
+                    cancellationToken).ConfigureAwait(false);
+                if (read == 0)
+                {
+                    break;
+                }
+                checksumBytes += read;
+            }
+            if (checksumBytes > MaximumChecksumBytes)
+            {
+                throw new InvalidDataException("The release checksum file is too large.");
+            }
+
+            var checksumText = Encoding.UTF8.GetString(checksumBuffer, 0, checksumBytes);
             var expectedHash = Sha256Pattern.Match(checksumText).Value;
             if (expectedHash.Length != 64)
             {

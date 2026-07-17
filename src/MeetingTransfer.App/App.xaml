@@ -3,6 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
+      <ResourceDictionary>
+        <ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary Source="Localization/Strings.zh-CN.xaml" />
+        </ResourceDictionary.MergedDictionaries>
         <!-- Codex-inspired dark system: quiet surfaces, hairline borders, one blue accent. -->
         <Color x:Key="WindowColor">#0D0D0F</Color>
         <Color x:Key="SidebarColor">#111113</Color>
@@ -41,6 +45,10 @@
         <SolidColorBrush x:Key="SidebarTextBrush" Color="{StaticResource InkColor}" />
         <SolidColorBrush x:Key="SidebarMutedBrush" Color="{StaticResource MutedColor}" />
 
+        <Geometry x:Key="WindowMinimizeIcon">M 1,5 L 9,5</Geometry>
+        <Geometry x:Key="WindowMaximizeIcon">M 1.5,1.5 L 8.5,1.5 8.5,8.5 1.5,8.5 Z</Geometry>
+        <Geometry x:Key="WindowCloseIcon">M 1.5,1.5 L 8.5,8.5 M 8.5,1.5 L 1.5,8.5</Geometry>
+
         <Style TargetType="Window">
             <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI" />
             <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
@@ -64,14 +72,27 @@
             <Setter Property="Width" Value="40" />
             <Setter Property="Height" Value="40" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
-            <Setter Property="FontSize" Value="10" />
-            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <Grid Width="10" Height="10">
+                            <Path Data="{Binding}"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.25"
+                                  StrokeStartLineCap="Square"
+                                  StrokeEndLineCap="Square"
+                                  StrokeLineJoin="Miter"
+                                  SnapsToDevicePixels="True" />
+                        </Grid>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="Button">
@@ -161,14 +182,16 @@
                                     BorderThickness="1"
                                     CornerRadius="5" />
                             <ContentPresenter Margin="10,0,30,0"
+                                              IsHitTestVisible="False"
                                               VerticalAlignment="Center"
                                               Content="{TemplateBinding SelectionBoxItem}"
                                               ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                               ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
-                            <ToggleButton HorizontalAlignment="Right"
-                                          Width="30"
+                            <ToggleButton x:Name="DropDownToggle"
+                                          HorizontalAlignment="Stretch"
                                           Background="Transparent"
                                           BorderThickness="0"
+                                          Cursor="Hand"
                                           Focusable="False"
                                           IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                                 <ToggleButton.Template>
@@ -177,8 +200,9 @@
                                             <Path Data="M 0 0 L 4 4 L 8 0"
                                                   Stroke="{StaticResource MutedBrush}"
                                                   StrokeThickness="1.3"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center" />
+                                                  HorizontalAlignment="Right"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,11,0" />
                                         </Border>
                                     </ControlTemplate>
                                 </ToggleButton.Template>
@@ -349,5 +373,6 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+      </ResourceDictionary>
     </Application.Resources>
 </Application>

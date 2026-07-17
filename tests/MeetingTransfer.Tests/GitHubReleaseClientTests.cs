@@ -91,6 +91,23 @@ public sealed class GitHubReleaseClientTests
         }
     }
 
+    [Fact]
+    public async Task DownloadRejectsOversizedChecksumResponse()
+    {
+        var package = Encoding.UTF8.GetBytes("verified release package");
+        var release = CreateRelease(package.Length);
+        using var httpClient = new HttpClient(new StubHandler(request =>
+            request.RequestUri!.AbsolutePath.EndsWith(".sha256", StringComparison.OrdinalIgnoreCase)
+                ? Text(new string('a', 20 * 1024))
+                : Bytes(package)));
+        var client = new GitHubReleaseClient(httpClient);
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            client.DownloadAndVerifyAsync(release));
+
+        Assert.Contains("too large", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static ReleaseInfo CreateRelease(long size) => new(
         "v9.0.0",
         "EchoMinutes 9.0",

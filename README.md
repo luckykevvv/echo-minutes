@@ -1,6 +1,6 @@
-# Meeting Transfer
+# EchoMinutes
 
-Meeting Transfer 1.0.0 是一款 Windows 本地会议录音、实时转写与离线说话人分离工具。音频与转写默认保存在本机；应用本身不上传会议内容。
+EchoMinutes 1.0.1 是一款 Windows 本地会议录音、实时转写与离线说话人分离工具。音频与转写默认保存在本机；应用本身不上传会议内容。
 
 ## 功能
 
@@ -23,7 +23,7 @@ Meeting Transfer 1.0.0 是一款 Windows 本地会议录音、实时转写与离
 
 ## 快速开始
 
-1. 推荐从 GitHub Release 下载并运行 `echo-minutes-setup-x64.exe`。安装器默认安装到当前用户的 `%LocalAppData%\Programs\EchoMinutes`，不需要管理员权限，并创建开始菜单入口。
+1. 推荐从 GitHub Release 下载并运行 `echo-minutes-setup-x64.exe`。安装器默认安装到当前用户的 `%LocalAppData%\Programs\EchoMinutes`，不需要管理员权限，并创建开始菜单入口；若未安装 .NET 8 Desktop Runtime x64，安装器会以所选语言提示并提供官方下载入口。
 2. 也可以下载便携版 `echo-minutes-win-x64.zip`，解压到当前用户可写目录后运行 `MeetingTransfer.App.exe`。
 3. 首次启动会显示三步新手引导，并在程序目录旁生成 `appsettings.json` 与 `models.json`。完成或跳过后，引导不会重复弹出。
 4. 在引导第二步直接选择并下载模型：离线模型下载后会自动设为默认；需要实时录音时下载 Realtime Paraformer；需要导入后自动分人时下载 Speaker diarization。以后也可从主界面左下角“设置”继续下载或切换模型。
@@ -46,11 +46,11 @@ Meeting Transfer 1.0.0 是一款 Windows 本地会议录音、实时转写与离
 | `recordings/` | 实时录音与导入后抽取的 WAV |
 | `exports/` | TXT、MD、SRT、VTT、JSON 导出 |
 
-真实配置与本地数据已由 `.gitignore` 排除。可参考 [appsettings.example.json](appsettings.example.json) 和 [models.example.json](models.example.json)。路径与模型参数也可从“设置”窗口修改。
+真实配置与本地数据已由 `.gitignore` 排除。可参考 [appsettings.example.json](appsettings.example.json) 和 [models.example.json](models.example.json)。路径与模型参数也可从主界面内的“设置”页修改。
 
 ## 应用更新
 
-EchoMinutes 启动后会异步检查 [`luckykevvv/echo-minutes`](https://github.com/luckykevvv/echo-minutes) 的最新 GitHub Release；发现新版本时，会显示版本号和 Release 更新说明。也可以在“设置 → Updates”中手动检查。每个 Release 同时提供推荐的 Windows 安装器和便携 ZIP。
+EchoMinutes 启动后会异步检查 [`luckykevvv/echo-minutes`](https://github.com/luckykevvv/echo-minutes) 的最新 GitHub Release；发现新版本时，会显示版本号和 Release 更新说明。也可以在“设置 → 更新”中手动检查。每个 Release 同时提供推荐的 Windows 安装器和便携 ZIP。
 
 确认更新后，应用会下载 `echo-minutes-win-x64.zip` 及对应的 `.sha256` 文件，校验 SHA256，安全退出，覆盖程序文件并自动重启。更新过程不会覆盖 `appsettings.json`、`models.json`、已下载模型、录音、导出或 SQLite 数据库。
 
@@ -70,20 +70,20 @@ git push origin v1.0.1
 | 说话人分离 | pyannote segmentation + 3D-Speaker embedding | sherpa-onnx CPU | 设置页下载 |
 | 媒体解码 | FFmpeg / ffprobe | CPU / 可用编解码后端 | 随程序提供（不是模型） |
 
-所有模型权重均不随发布包提供。设置页提供 Whisper tiny.en、base、small、large-v3-turbo、SenseVoice Small、中文 Paraformer-large、Realtime Paraformer 和 Speaker diarization。模型从目录中的 HTTPS 上游地址下载，临时文件写为 `.part`，瞬时失败最多重试三次；目录提供 SHA256 时，已有文件和新下载都会校验。官方 tar.bz2 资源只提取目录指定的单个成员。Realtime Paraformer 和 Speaker diarization 属于功能资源，不能设为离线导入默认模型。
+所有模型权重均不随发布包提供。设置页提供 Whisper tiny.en、base、small、large-v3-turbo、SenseVoice Small、中文 Paraformer-large、Realtime Paraformer 和 Speaker diarization。模型从目录中的 HTTPS 上游地址下载，临时文件写为 `.part`，瞬时失败最多重试三次；目录中的每个下载文件均固定 SHA256，已有文件和新下载都会校验。官方 tar.bz2 资源只提取目录指定的单个成员。Realtime Paraformer 和 Speaker diarization 属于功能资源，不能设为离线导入默认模型。
 
 ## 已知限制
 
 - 实时模式按音频来源标记“我方 / 远端”，尚不执行低延迟多人声纹聚类；真正的说话人分离只用于导入文件。
 - 离线 ASR 与 diarization 没有共享逐词时间戳。语句跨越说话人边界时，文本按时间重叠近似切分，仍需人工复核。
 - 当前捆绑的 sherpa diarizer 在此 Windows 包中使用 CPU；Vulkan 仅用于 whisper.cpp 离线转写。
-- SQLite 会保存会话，但 1.0.0 尚无历史会话浏览 / 恢复界面。
-- 只有已取得可信摘要的模型会执行 SHA256 固定；未固定摘要的模型仍依赖 HTTPS。公开发布前应继续补齐上游摘要。
+- SQLite 会保存会话，但 1.0.1 尚无历史会话浏览 / 恢复界面。
+- 上游若替换模型文件，固定 SHA256 会拒绝新内容；此时需要先审查上游变更并更新模型目录，不能静默接受。
 - 当前安装器和自动更新包尚未进行代码签名；Windows SmartScreen 可能对首次下载显示未知发布者提示。
 
 ## 从源码构建
 
-需要 .NET 8 SDK、Windows x64，以及已准备好的 `third_party/ffmpeg`、`third_party/sherpa-onnx`、`third_party/whisper-cpp-vulkan` 运行时二进制。发布项目只复制执行文件与运行库，不复制这些目录中的模型权重。构建安装器还需要 Inno Setup 6；Release 工作流会自动安装。
+需要 .NET 8 SDK、Windows x64，以及已准备好的 `third_party/ffmpeg`、`third_party/sherpa-onnx`、`third_party/whisper-cpp-vulkan` 运行时二进制。发布项目只复制执行文件与运行库，不复制这些目录中的模型权重，也会从最终包移除 PDB 调试符号。构建安装器还需要 Inno Setup 6；Release 工作流会自动安装。
 
 ```powershell
 dotnet restore MeetingTransfer.sln
@@ -93,6 +93,8 @@ dotnet publish src/MeetingTransfer.App/MeetingTransfer.App.csproj `
   -c Release -r win-x64 --self-contained false `
   -o publish/win-x64
 ```
+
+上述本地命令保留 `-dev` 版本后缀，便于视觉验收时识别构建；正式 tag 工作流会以 tag 中的版本覆盖程序集、更新器和安装器版本。
 
 运行发布版：
 
@@ -113,8 +115,8 @@ dotnet publish src/MeetingTransfer.App/MeetingTransfer.App.csproj `
 
 - 会议音频与转写默认只写入本地路径。首次模型下载是应用的主要网络行为。
 - 模型目录只接受绝对 HTTPS 下载地址，并拒绝可能逃逸模型目录的文件名。
-- 本仓库尚未声明 Meeting Transfer 自有源码的公开许可证；未获得权利人许可前，不应假定源码可再分发。
-- 发布包包含多项第三方运行时，但不包含模型权重。特别是当前 FFmpeg 构建启用了 GPLv3 选项；再分发者必须履行相应许可证与源码提供义务。用户另行下载的模型适用各自上游条款，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+- 本仓库尚未声明 EchoMinutes 自有源码的公开许可证；未获得权利人许可前，不应假定源码可再分发。
+- 发布包包含多项第三方运行时，但不包含模型权重。完整第三方许可文本随包位于 `Licenses/`。特别是当前 FFmpeg 构建启用了 GPLv3 选项；再分发者必须履行相应许可证与完整对应源码、构建脚本提供义务。用户另行下载的模型适用各自上游条款，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 ## 发布前验证
 

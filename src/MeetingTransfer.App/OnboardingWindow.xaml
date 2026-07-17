@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:MeetingTransfer.App"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="Welcome to Meeting Transfer"
+        Title="{DynamicResource WelcomeWindowTitle}"
         Width="920"
         Height="640"
         WindowStartupLocation="CenterOwner"
@@ -56,17 +56,13 @@
                     <Border Width="22" Height="22" CornerRadius="6" Background="{StaticResource InkBrush}">
                         <TextBlock Text="M" Foreground="#111113" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
-                    <TextBlock Text="Meeting Transfer" FontWeight="SemiBold" FontSize="13" Margin="9,0,0,0" VerticalAlignment="Center" />
-                    <TextBlock Text="  /  FIRST RUN" Foreground="{StaticResource SubtleBrush}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Text="EchoMinutes" FontWeight="SemiBold" FontSize="13" Margin="9,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock Text="{DynamicResource FirstRunTitle}" Foreground="{StaticResource SubtleBrush}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </StackPanel>
-                <Button HorizontalAlignment="Right"
-                        Style="{StaticResource IconButton}"
-                        Content="&#xE8BB;"
-                        ToolTip="跳过引导"
-                        AutomationProperties.Name="跳过新手引导"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                        Click="Skip_Click"
-                        Margin="0,0,2,0" />
+                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <ComboBox x:Name="OnboardingLanguageBox" Width="130" Margin="0,4,4,4" DisplayMemberPath="DisplayName" SelectedValuePath="Code" SelectionChanged="OnboardingLanguageBox_SelectionChanged" />
+                    <Button Style="{StaticResource IconButton}" Content="{StaticResource WindowCloseIcon}" ToolTip="{DynamicResource SkipGuide}" Click="Skip_Click" Margin="0,0,2,0" />
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -88,14 +84,14 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Text="LOCAL-FIRST" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="SemiBold" />
-                        <TextBlock Text="把会议留在本机"
+                        <TextBlock Text="{DynamicResource OnboardingLocalFirst}" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="SemiBold" />
+                        <TextBlock Text="{DynamicResource OnboardingHero}"
                                    FontFamily="Segoe UI Variable Display, Segoe UI, Microsoft YaHei UI"
                                    FontSize="25"
                                    FontWeight="SemiBold"
                                    TextWrapping="Wrap"
                                    Margin="0,9,0,0" />
-                        <TextBlock Text="录音、转写与导出默认只写入你的电脑。"
+                        <TextBlock Text="{DynamicResource OnboardingHeroHint}"
                                    Foreground="{StaticResource MutedBrush}"
                                    FontSize="12"
                                    LineHeight="19"
@@ -110,8 +106,8 @@
                                 <TextBlock Text="01" FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock x:Name="StepLabelOne" Text="开始之前" FontWeight="SemiBold" FontSize="12" />
-                                <TextBlock Text="本地与隐私" Foreground="{StaticResource SubtleBrush}" FontSize="10" Margin="0,2,0,0" />
+                                <TextBlock x:Name="StepLabelOne" Text="{DynamicResource StepOneLabel}" FontWeight="SemiBold" FontSize="12" />
+                                <TextBlock Text="{DynamicResource StepOneHint}" Foreground="{StaticResource SubtleBrush}" FontSize="10" Margin="0,2,0,0" />
                             </StackPanel>
                         </Grid>
                         <Grid Margin="0,0,0,17">
@@ -120,8 +116,8 @@
                                 <TextBlock Text="02" FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock x:Name="StepLabelTwo" Text="准备模型" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource MutedBrush}" />
-                                <TextBlock Text="按用途下载" Foreground="{StaticResource SubtleBrush}" FontSize="10" Margin="0,2,0,0" />
+                                <TextBlock x:Name="StepLabelTwo" Text="{DynamicResource StepTwoLabel}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource MutedBrush}" />
+                                <TextBlock Text="{DynamicResource StepTwoHint}" Foreground="{StaticResource SubtleBrush}" FontSize="10" Margin="0,2,0,0" />
                             </StackPanel>
                         </Grid>
                         <Grid>
@@ -130,14 +126,14 @@
                                 <TextBlock Text="03" FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock x:Name="StepLabelThree" Text="选择工作流" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource MutedBrush}" />
-                                <TextBlock Text="实时或离线" Foreground="{StaticResource SubtleBrush}" FontSize="10" Margin="0,2,0,0" />
+                                <TextBlock x:Name="StepLabelThree" Text="{DynamicResource StepThreeLabel}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource MutedBrush}" />
+                                <TextBlock Text="{DynamicResource StepThreeHint}" Foreground="{StaticResource SubtleBrush}" FontSize="10" Margin="0,2,0,0" />
                             </StackPanel>
                         </Grid>
                     </StackPanel>
 
                     <Border Grid.Row="2" Background="{StaticResource AccentSurfaceBrush}" BorderBrush="#29466F" BorderThickness="1" CornerRadius="7" Padding="11">
-                        <TextBlock Text="发布包不包含模型。只有你主动下载模型时，应用才会连接上游。"
+                        <TextBlock Text="{DynamicResource NoBundledModelsHint}"
                                    Foreground="#AFCFFF"
                                    FontSize="10"
                                    LineHeight="16"
@@ -154,13 +150,13 @@
 
                 <Grid x:Name="StepOne" AutomationProperties.Name="新手引导第一步：开始之前">
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="WELCOME · 欢迎" Style="{StaticResource EyebrowText}" />
-                        <TextBlock Text="三分钟，准备好第一次转写"
+                        <TextBlock Text="{DynamicResource WelcomeEyebrow}" Style="{StaticResource EyebrowText}" />
+                        <TextBlock Text="{DynamicResource WelcomeTitle}"
                                    FontFamily="Segoe UI Variable Display, Segoe UI, Microsoft YaHei UI"
                                    FontSize="31"
                                    FontWeight="SemiBold"
                                    Margin="0,8,0,0" />
-                        <TextBlock Text="Meeting Transfer 有两条独立工作流：实时录音与离线导入。你只需要下载自己会用到的模型。"
+                        <TextBlock Text="{DynamicResource WelcomeDescription}"
                                    Foreground="{StaticResource MutedBrush}"
                                    FontSize="13"
                                    LineHeight="21"
@@ -171,16 +167,16 @@
                             <Border Grid.Column="0" Style="{StaticResource GuideCard}">
                                 <StackPanel>
                                     <TextBlock Text="&#xE72E;" FontFamily="Segoe Fluent Icons" Foreground="{StaticResource SuccessBrush}" FontSize="19" />
-                                    <TextBlock Text="本地保存" FontSize="14" FontWeight="SemiBold" Margin="0,12,0,0" />
-                                    <TextBlock Text="数据库、录音和导出默认位于程序目录旁；会议内容不会自动上传。"
+                                <TextBlock Text="{DynamicResource LocalStorageTitle}" FontSize="14" FontWeight="SemiBold" Margin="0,12,0,0" />
+                                <TextBlock Text="{DynamicResource LocalStorageDescription}"
                                                Foreground="{StaticResource MutedBrush}" FontSize="11" LineHeight="18" TextWrapping="Wrap" Margin="0,7,0,0" />
                                 </StackPanel>
                             </Border>
                             <Border Grid.Column="2" Style="{StaticResource GuideCard}">
                                 <StackPanel>
                                     <TextBlock Text="&#xE8D4;" FontFamily="Segoe Fluent Icons" Foreground="{StaticResource AccentBrush}" FontSize="19" />
-                                    <TextBlock Text="按需下载" FontSize="14" FontWeight="SemiBold" Margin="0,12,0,0" />
-                                    <TextBlock Text="正式包只提供运行时。首次使用需在设置中下载相应模型，不会占用不必要的空间。"
+                                <TextBlock Text="{DynamicResource DownloadOnDemandTitle}" FontSize="14" FontWeight="SemiBold" Margin="0,12,0,0" />
+                                <TextBlock Text="{DynamicResource DownloadOnDemandDescription}"
                                                Foreground="{StaticResource MutedBrush}" FontSize="11" LineHeight="18" TextWrapping="Wrap" Margin="0,7,0,0" />
                                 </StackPanel>
                             </Border>
@@ -195,13 +191,13 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <StackPanel>
-                        <TextBlock Text="MODEL SETUP · 模型安装" Style="{StaticResource EyebrowText}" />
-                        <TextBlock Text="现在选择并下载你需要的模型"
+                        <TextBlock Text="{DynamicResource ModelSetupEyebrow}" Style="{StaticResource EyebrowText}" />
+                        <TextBlock Text="{DynamicResource ModelSetupTitle}"
                                    FontFamily="Segoe UI Variable Display, Segoe UI, Microsoft YaHei UI"
                                    FontSize="26"
                                    FontWeight="SemiBold"
                                    Margin="0,7,0,0" />
-                        <TextBlock Text="离线模型下载后会自动设为默认；实时与说话人模型可按需安装。"
+                        <TextBlock Text="{DynamicResource ModelSetupDescription}"
                                    Foreground="{StaticResource MutedBrush}"
                                    FontSize="11"
                                    Margin="0,6,0,12" />
@@ -263,7 +259,7 @@
 
                     <TextBlock x:Name="ModelSetupStatus"
                                Grid.Row="2"
-                               Text="至少安装一个模型才能继续；也可以跳过引导，稍后再设置。"
+                                   Text="{DynamicResource ModelRequiredHint}"
                                Foreground="{StaticResource SubtleBrush}"
                                FontSize="10"
                                Margin="2,9,0,0"
@@ -272,8 +268,8 @@
 
                 <Grid x:Name="StepThree" Visibility="Collapsed" AutomationProperties.Name="新手引导第三步：选择工作流">
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="READY · 准备完成" Style="{StaticResource EyebrowText}" />
-                        <TextBlock Text="从你的第一场会议开始"
+                        <TextBlock Text="{DynamicResource ReadyEyebrow}" Style="{StaticResource EyebrowText}" />
+                        <TextBlock Text="{DynamicResource ReadyTitle}"
                                    FontFamily="Segoe UI Variable Display, Segoe UI, Microsoft YaHei UI"
                                    FontSize="30"
                                    FontWeight="SemiBold"
@@ -282,17 +278,17 @@
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource GuideCard}" Padding="17">
                                 <StackPanel>
-                                    <TextBlock Text="LIVE / 实时" Foreground="{StaticResource SuccessBrush}" FontSize="10" FontWeight="SemiBold" />
-                                    <TextBlock Text="选择音频来源 → 开始" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,0" />
-                                    <TextBlock Text="可同时采集系统音频与麦克风，停止时自动保存会话。"
+                                <TextBlock Text="{DynamicResource LiveWorkflow}" Foreground="{StaticResource SuccessBrush}" FontSize="10" FontWeight="SemiBold" />
+                                <TextBlock Text="{DynamicResource LiveWorkflowTitle}" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,0" />
+                                <TextBlock Text="{DynamicResource LiveWorkflowDescription}"
                                                Foreground="{StaticResource MutedBrush}" FontSize="11" LineHeight="18" TextWrapping="Wrap" Margin="0,7,0,0" />
                                 </StackPanel>
                             </Border>
                             <Border Grid.Column="2" Style="{StaticResource GuideCard}" Padding="17">
                                 <StackPanel>
-                                    <TextBlock Text="IMPORT / 离线" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="SemiBold" />
-                                    <TextBlock Text="选择人数 → 导入" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,0" />
-                                    <TextBlock Text="支持常见音视频格式；可在完成后重命名或合并说话人。"
+                                <TextBlock Text="{DynamicResource ImportWorkflow}" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="SemiBold" />
+                                <TextBlock Text="{DynamicResource ImportWorkflowTitle}" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,0" />
+                                <TextBlock Text="{DynamicResource ImportWorkflowDescription}"
                                                Foreground="{StaticResource MutedBrush}" FontSize="11" LineHeight="18" TextWrapping="Wrap" Margin="0,7,0,0" />
                                 </StackPanel>
                             </Border>
@@ -300,7 +296,7 @@
                         <Border Background="#151F2D" BorderBrush="#29466F" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,15,0,0">
                             <DockPanel>
                                 <TextBlock Text="&#xE946;" FontFamily="Segoe Fluent Icons" Foreground="{StaticResource AccentBrush}" FontSize="15" Margin="0,0,10,0" />
-                                <TextBlock Text="模型状态已同步到工作台；以后也可以从左下角“设置”继续下载或切换模型。"
+                            <TextBlock Text="{DynamicResource ModelStateSyncedHint}"
                                            Foreground="#B8CBE8" FontSize="11" TextWrapping="Wrap" />
                             </DockPanel>
                         </Border>
@@ -312,12 +308,12 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock x:Name="StepCounter" Text="01 / 03" Foreground="{StaticResource AccentBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="11" FontWeight="SemiBold" />
-                            <TextBlock Text="  初次设置" Foreground="{StaticResource SubtleBrush}" FontSize="11" />
+                    <TextBlock Text="{DynamicResource InitialSetup}" Foreground="{StaticResource SubtleBrush}" FontSize="11" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <Button x:Name="SkipButton" Content="跳过引导" Style="{StaticResource QuietButton}" Click="Skip_Click" AutomationProperties.Name="跳过新手引导" Margin="0,0,6,0" />
-                            <Button x:Name="BackButton" Content="上一步" Click="Back_Click" AutomationProperties.Name="返回上一步" Visibility="Collapsed" Margin="0,0,8,0" />
-                            <Button x:Name="NextButton" Content="下一步" Style="{StaticResource AccentButton}" Click="Next_Click" AutomationProperties.Name="进入下一步" MinWidth="112" />
+                            <Button x:Name="SkipButton" Content="{DynamicResource SkipGuide}" Style="{StaticResource QuietButton}" Click="Skip_Click" Margin="0,0,6,0" />
+                            <Button x:Name="BackButton" Content="{DynamicResource PreviousStep}" Click="Back_Click" Visibility="Collapsed" Margin="0,0,8,0" />
+                            <Button x:Name="NextButton" Content="{DynamicResource NextStep}" Style="{StaticResource AccentButton}" Click="Next_Click" MinWidth="112" />
                         </StackPanel>
                     </Grid>
                 </Border>

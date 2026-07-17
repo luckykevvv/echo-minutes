@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using Microsoft.Win32;
 using MeetingTransfer.App.Configuration;
+using MeetingTransfer.App.Localization;
 using MeetingTransfer.Audio;
 using MeetingTransfer.Core.Audio;
 using MeetingTransfer.Core.Config;
@@ -44,13 +45,21 @@ public sealed class MainWindowViewModel : ObservableObject
     private SpeakerCountOption? _selectedSpeakerCount;
     private DateTimeOffset _lastRealtimeErrorAt = DateTimeOffset.MinValue;
     private bool _isShuttingDown;
+    private bool _hasDefaultDocumentTitle = true;
 
     public MainWindowViewModel()
     {
         (_options, _sherpaOptions) = LoadOptions();
+        _isChinese = LocalizationManager.Normalize(_options.Ui.Language) == "zh-CN";
+        LocalizationManager.LanguageChanged += LocalizationManager_LanguageChanged;
         _store = new SqliteTranscriptStore(_options.Storage.DatabasePath);
 
-        Document = new TranscriptDocument { Title = $"Meeting {DateTimeOffset.Now:yyyy-MM-dd HH:mm}" };
+        Document = new TranscriptDocument
+        {
+            Title = Text(
+                $"会议 {DateTimeOffset.Now:yyyy-MM-dd HH:mm}",
+                $"Meeting {DateTimeOffset.Now:yyyy-MM-dd HH:mm}")
+        };
         Segments = new ObservableCollection<TranscriptSegment>(Document.Segments);
         Speakers = new ObservableCollection<Speaker>(Document.Speakers);
         SystemAudioSources = [];
@@ -87,6 +96,7 @@ public sealed class MainWindowViewModel : ObservableObject
     public RelayCommand SettingsCommand { get; }
     public RelayCommand ToggleLanguageCommand { get; }
     public RelayCommand MergeSpeakerCommand { get; }
+    public event EventHandler? SettingsRequested;
     public bool ShouldShowOnboarding => !_options.Ui.OnboardingCompleted;
 
     public Task CompleteOnboardingAsync()
@@ -110,7 +120,7 @@ public sealed class MainWindowViewModel : ObservableObject
         return Task.CompletedTask;
     }
 
-    public string AppTitle => "Meeting Transfer";
+    public string AppTitle => "EchoMinutes";
     public string EngineStatus
     {
         get
@@ -460,7 +470,8 @@ public sealed class MainWindowViewModel : ObservableObject
 
         var dialog = new OpenFileDialog
         {
-            Filter = "Media files|*.wav;*.mp3;*.m4a;*.mp4;*.mkv;*.mov|All files|*.*"
+            Filter = $"{Text("媒体文件", "Media files")}|*.wav;*.mp3;*.m4a;*.mp4;*.mkv;*.mov|" +
+                     $"{Text("所有文件", "All files")}|*.*"
         };
 
         if (dialog.ShowDialog() != true)
@@ -496,11 +507,7 @@ public sealed class MainWindowViewModel : ObservableObject
             // thread when we capture SynchronizationContext, which WPF supplies.
             var progress = new Progress<TranscriptionProgress>(p =>
             {
-                var msg = p.Stage == TranscriptionStage.Diarizing
-                    ? Text($"正在识别说话人 {p.Percent:0}%...", $"Identifying speakers... {p.Percent:0}%")
-                    : string.IsNullOrWhiteSpace(p.Message)
-                        ? Text($"正在转写 {p.Percent:0}%...", $"Transcribing {p.Percent:0}%...")
-                        : p.Message;
+                var msg = FormatTranscriptionProgress(p);
                 var overallPercent = MapImportProgress(p);
                 SetProgress(msg, false, Math.Max(OperationProgress, overallPercent));
             });
@@ -518,6 +525,7 @@ public sealed class MainWindowViewModel : ObservableObject
             {
                 Title = Path.GetFileNameWithoutExtension(dialog.FileName),
             };
+            _hasDefaultDocumentTitle = false;
             RefreshCollections();
             foreach (var segment in segments)
             {
@@ -606,6 +614,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private void AddSegment(TranscriptSegment segment)
     {
+        segment.SpeakerName = LocalizeDefaultSpeakerName(segment.SpeakerName);
         Document.EnsureSpeaker(segment.SpeakerId, segment.SpeakerName, segment.SourceKind == AudioSourceKind.Microphone);
         if (!Document.Segments.Contains(segment))
         {
@@ -649,43 +658,37 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private Task OpenSettingsAsync()
     {
-        try
-        {
-            var window = new SettingsWindow(_settingsFileService)
-            {
-                Owner = Application.Current.MainWindow
-            };
-
-            if (window.ShowDialog() == true)
-            {
-                (_options, _sherpaOptions) = LoadOptions();
-                _store = new SqliteTranscriptStore(_options.Storage.DatabasePath);
-                OnPropertyChanged(nameof(EngineStatus));
-                OnPropertyChanged(nameof(StoragePath));
-                RaiseOperationCanExecuteChanged();
-                UpdateModelReadinessStatus();
-            }
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                Application.Current.MainWindow,
-                ex.Message,
-                Text("设置打开失败", "Could not open settings"),
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            StatusMessage = $"{Text("设置打开失败", "Could not open settings")}: {ex.Message}";
-        }
-
+        SettingsRequested?.Invoke(this, EventArgs.Empty);
         return Task.CompletedTask;
+    }
+
+    public void ReloadSettings()
+    {
+        (_options, _sherpaOptions) = LoadOptions();
+        _isChinese = LocalizationManager.Normalize(_options.Ui.Language) == "zh-CN";
+        _store = new SqliteTranscriptStore(_options.Storage.DatabasePath);
+        OnPropertyChanged(nameof(EngineStatus));
+        OnPropertyChanged(nameof(StoragePath));
+        RaiseOperationCanExecuteChanged();
+        UpdateModelReadinessStatus();
     }
 
     private Task ToggleLanguageAsync()
     {
         _isChinese = !_isChinese;
+        var settings = _settingsFileService.Load();
+        settings.App.Ui.Language = _isChinese ? "zh-CN" : "en-US";
+        _settingsFileService.Save(settings);
+        LocalizationManager.Apply(settings.App.Ui.Language);
         OnLanguageChanged();
         StatusMessage = Text("语言已切换为中文。", "Language switched to English.");
         return Task.CompletedTask;
+    }
+
+    private void LocalizationManager_LanguageChanged(object? sender, EventArgs e)
+    {
+        _isChinese = LocalizationManager.CurrentLanguage == "zh-CN";
+        OnLanguageChanged();
     }
 
     private void BeginProgress(string status, bool indeterminate, double progress)
@@ -732,6 +735,24 @@ public sealed class MainWindowViewModel : ObservableObject
         };
     }
 
+    private string FormatTranscriptionProgress(TranscriptionProgress progress)
+        => progress.Stage switch
+        {
+            TranscriptionStage.Preparing => Text("正在准备转写...", "Preparing transcription..."),
+            TranscriptionStage.LoadingModel => Text("正在加载识别模型...", "Loading speech model..."),
+            TranscriptionStage.Transcribing => Text(
+                $"正在转写 {progress.Percent:0}%...",
+                $"Transcribing {progress.Percent:0}%..."),
+            TranscriptionStage.PostProcessing => Text("正在整理转写结果...", "Post-processing transcript..."),
+            TranscriptionStage.AsrComplete => Text("转写完成，正在整理...", "Transcription complete; finalizing..."),
+            TranscriptionStage.Diarizing => Text(
+                $"正在识别说话人 {progress.Percent:0}%...",
+                $"Identifying speakers... {progress.Percent:0}%..."),
+            TranscriptionStage.Finalizing or TranscriptionStage.Complete =>
+                Text("正在完成导入...", "Finalizing import..."),
+            _ => Text("正在处理...", "Working...")
+        };
+
     private string Text(string zh, string en)
         => _isChinese ? zh : en;
 
@@ -761,7 +782,74 @@ public sealed class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(MergeSpeakerLabel));
         OnPropertyChanged(nameof(SessionLabel));
         OnPropertyChanged(nameof(ProgressLabel));
+        LocalizeDefaultDocumentTitle();
         RebuildSpeakerCountOptions(SelectedSpeakerCount?.Value ?? -1);
+        LocalizeDefaultSpeakerNames();
+    }
+
+    private void LocalizeDefaultDocumentTitle()
+    {
+        if (!_hasDefaultDocumentTitle)
+        {
+            return;
+        }
+
+        const string chinesePrefix = "会议 ";
+        const string englishPrefix = "Meeting ";
+        var suffix = Document.Title.StartsWith(chinesePrefix, StringComparison.Ordinal)
+            ? Document.Title[chinesePrefix.Length..]
+            : Document.Title.StartsWith(englishPrefix, StringComparison.Ordinal)
+                ? Document.Title[englishPrefix.Length..]
+                : null;
+        if (suffix is null)
+        {
+            _hasDefaultDocumentTitle = false;
+            return;
+        }
+
+        Document.Title = Text(chinesePrefix + suffix, englishPrefix + suffix);
+        OnPropertyChanged(nameof(Document));
+    }
+
+    private void LocalizeDefaultSpeakerNames()
+    {
+        var changed = false;
+        foreach (var speaker in Document.Speakers.ToArray())
+        {
+            var localized = LocalizeDefaultSpeakerName(speaker.Name);
+            if (string.Equals(localized, speaker.Name, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            Document.RenameSpeaker(speaker.Id, localized);
+            changed = true;
+        }
+
+        if (changed)
+        {
+            RefreshCollections();
+        }
+    }
+
+    private string LocalizeDefaultSpeakerName(string name)
+    {
+        if (string.Equals(name, "Me", StringComparison.OrdinalIgnoreCase) || name == "我")
+        {
+            return Text("我", "Me");
+        }
+        if (string.Equals(name, "Remote", StringComparison.OrdinalIgnoreCase) || name == "远端")
+        {
+            return Text("远端", "Remote");
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(
+            name,
+            @"^(?:Speaker|说话人)\s*(?<number>\d+)$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return match.Success
+            ? Text($"说话人 {match.Groups["number"].Value}", $"Speaker {match.Groups["number"].Value}")
+            : name;
     }
 
     private void RebuildSpeakerCountOptions(int selectedValue)
@@ -792,6 +880,7 @@ public sealed class MainWindowViewModel : ObservableObject
         }
 
         _isShuttingDown = true;
+        LocalizationManager.LanguageChanged -= LocalizationManager_LanguageChanged;
         RaiseOperationCanExecuteChanged();
         _operationCts?.Cancel();
         await StopInternalAsync(false).ConfigureAwait(true);

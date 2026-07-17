@@ -1,4 +1,5 @@
 using System.Windows;
+using MeetingTransfer.App.Localization;
 using MeetingTransfer.Core.Updates;
 
 namespace MeetingTransfer.App;
@@ -15,9 +16,9 @@ public partial class UpdateWindow : Window
         _release = release;
         _releaseClient = releaseClient;
         ReleaseTitleText.Text = release.DisplayName;
-        VersionText.Text = $"{release.TagName}  ·  current {Updates.UpdateCoordinator.CurrentVersionText}";
+        VersionText.Text = LocalizationManager.Format("UpdateCurrentVersion", release.TagName, Updates.UpdateCoordinator.CurrentVersionText);
         ReleaseNotesText.Text = release.Notes;
-        StatusText.Text = $"{FormatSize(release.Package.Size)} · SHA256 verified before installation";
+        StatusText.Text = LocalizationManager.Format("UpdateVerificationHint", FormatSize(release.Package.Size));
     }
 
     public bool InstallReady { get; private set; }
@@ -29,33 +30,33 @@ public partial class UpdateWindow : Window
         InstallButton.IsEnabled = false;
         LaterButton.IsEnabled = false;
         DownloadProgress.Visibility = Visibility.Visible;
-        StatusText.Text = "Downloading update…";
+        StatusText.Text = LocalizationManager.Text("UpdateDownloading");
         var progress = new Progress<double>(value =>
         {
             DownloadProgress.Value = value;
-            StatusText.Text = $"Downloading update… {value:P0}";
+            StatusText.Text = LocalizationManager.Format("UpdateDownloadingProgress", value);
         });
 
         try
         {
             PackagePath = await _releaseClient.DownloadAndVerifyAsync(_release, progress, _cancellation.Token);
-            StatusText.Text = "Download verified. EchoMinutes will restart.";
+            StatusText.Text = LocalizationManager.Text("UpdateVerifiedRestart");
             InstallReady = true;
             DialogResult = true;
             Close();
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = "Download cancelled.";
+            StatusText.Text = LocalizationManager.Text("UpdateDownloadCancelled");
             InstallButton.IsEnabled = true;
             LaterButton.IsEnabled = true;
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Update download failed.";
+            StatusText.Text = LocalizationManager.Text("UpdateDownloadFailed");
             InstallButton.IsEnabled = true;
             LaterButton.IsEnabled = true;
-            MessageBox.Show(this, ex.Message, "Update failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, ex.Message, LocalizationManager.Text("UpdateFailedTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

@@ -32,6 +32,10 @@
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
     <None Include="..\..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\third_party\licenses\*.txt"
+          Link="Licenses\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <Target Name="PublishEchoMinutesUpdater" AfterTargets="Publish" Condition="'$(DesignTimeBuild)' != 'true'">
     <RemoveDir Directories="$(UpdaterPublishDirectory)" />
@@ -43,5 +47,13 @@
     </ItemGroup>
     <Copy SourceFiles="@(EchoMinutesUpdaterFile)"
           DestinationFiles="@(EchoMinutesUpdaterFile->'$(PublishDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+  <Target Name="RemoveDebugSymbolsFromPublish"
+          AfterTargets="PublishEchoMinutesUpdater"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <ItemGroup>
+      <PublishedDebugSymbol Include="$(PublishDir)**\*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(PublishedDebugSymbol)" />
   </Target>
 </Project>
