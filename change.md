@@ -95,6 +95,7 @@
 - 使用正式安装器实机复核安装模式、`English / 简体中文` 语言选择、英文安装路径页与 `EchoMinutes 1.0.1` 版本显示；随后取消安装，未改变系统安装状态。
 - 最终正式产物复核：安装器 55,604,384 bytes，SHA256 为 `2bcfe17448866791f625023c4922686ca2ea369f30357454e813f4ac156c2bbf`；便携 ZIP 98,076,434 bytes，展开后 264,979,837 bytes，SHA256 为 `63975a6b2ca64f2b52a4fec581d782ea701673db5c8398ae6e8d792a8d84e766`。两份校验文件均匹配，ZIP 中模型权重 0、用户数据 0、PDB 0、第三方许可 9。
 - 提交前清理 NAudio 与 SQLite 许可文本首尾多余空行；`git diff --cached --check` 通过，并确认暂存内容不含开发机地址、密码、私钥或 GitHub token。
+- 准备发布 GitHub Release `v1.0.1`：确认 Release 工作流由正式版本标签触发，并会自动执行构建、测试、无模型/用户数据/PDB 门禁，随后上传安装器、便携 ZIP 及两份 SHA256 文件。
 
 ## 执行命令
 
@@ -122,5 +123,7 @@ dotnet publish src/MeetingTransfer.App/MeetingTransfer.App.csproj -c Release -r 
 git diff --check
 git status --short
 git ls-files -v | Select-String '^S'
+git tag -a v1.0.1 -m "EchoMinutes 1.0.1"
+git push origin v1.0.1
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 ```
