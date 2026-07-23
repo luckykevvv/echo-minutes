@@ -169,6 +169,22 @@ public sealed class WhisperSentenceSplittingTests
     }
 
     [Fact]
+    public void Split_EnforcesMaximumSegmentDuration()
+    {
+        var split = Split(
+            texts: ["one", "two", "three", "four"],
+            startMs: [0, 2000, 4000, 6000],
+            endMs: [2000, 4000, 6000, 8000],
+            maxLen: 200,
+            maxSeconds: 3.0);
+
+        Assert.Equal(4, split.Count);
+        Assert.All(split, segment =>
+            Assert.InRange(segment.EndMs - segment.StartMs, 0, 3000));
+        Assert.Equal(["one", "two", "three", "four"], split.Select(segment => segment.Text));
+    }
+
+    [Fact]
     public void Split_SkipsEmptyChunksAndContinues()
     {
         // whisper-cli emits empty chunks for silence. The splitter should treat

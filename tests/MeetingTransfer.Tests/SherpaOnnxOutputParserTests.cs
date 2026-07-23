@@ -102,9 +102,13 @@ public sealed class SherpaOnnxOutputParserTests
             BindingFlags.NonPublic | BindingFlags.Static);
 
         Assert.NotNull(method);
+        var executable = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh";
+        var arguments = OperatingSystem.IsWindows()
+            ? "/c echo STDOUT_LINE & echo STDERR_LINE 1>&2"
+            : "-c \"printf 'STDOUT_LINE\\n'; printf 'STDERR_LINE\\n' >&2\"";
         var task = (Task<string>)method!.Invoke(null, [
-            "cmd.exe",
-            "/c echo STDOUT_LINE & echo STDERR_LINE 1>&2",
+            executable,
+            arguments,
             CancellationToken.None
         ])!;
         var merged = await task;

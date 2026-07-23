@@ -165,4 +165,22 @@
   <sys:String x:Key="Model.speaker-diarization.Description" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Required to assign Speaker 1, Speaker 2, and other labels to imported recordings. Includes pyannote segmentation and a 3D-Speaker ERes2Net voice-embedding model.</sys:String>
   <sys:String x:Key="Model.speaker-diarization.Speed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">CPU post-processing after offline transcription.</sys:String>
   <sys:String x:Key="Model.speaker-diarization.Accuracy" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Speaker turns are clustered from voice embeddings; attribution around rapid speaker changes remains approximate.</sys:String>
+  <sys:String x:Key="SessionHistoryLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Session history</sys:String>
+  <sys:String x:Key="SessionHistoryTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Meeting archive</sys:String>
+  <sys:String x:Key="SessionHistoryHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Open, review, or clean up transcript sessions stored on this device.</sys:String>
+  <sys:String x:Key="NewMeetingLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">＋ New meeting</sys:String>
+  <sys:String x:Key="CurrentSessionLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Current session</sys:String>
+  <sys:String x:Key="OpenSessionLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Open</sys:String>
+  <sys:String x:Key="DeleteSessionLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Delete</sys:String>
+  <sys:String x:Key="NoSessionsTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">No saved meetings yet</sys:String>
+  <sys:String x:Key="NoSessionsHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Start a live recording or import media. Completed transcripts will appear here automatically.</sys:String>
+  <sys:String x:Key="HistoryLoadFailed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Could not load session history</sys:String>
+  <sys:String x:Key="DeleteSessionConfirmTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Delete local session</sys:String>
+  <sys:String x:Key="DeleteSessionConfirm" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Delete the local transcript for “{0}”? Recorded audio files will not be deleted.</sys:String>
+  <sys:String x:Key="DeleteSessionFailed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Could not delete session</sys:String>
+  <sys:String x:Key="ConfigRecoveredTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Configuration recovered</sys:String>
+  <sys:String x:Key="ConfigRecoveredMessage" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">EchoMinutes found an unreadable configuration and restored safe defaults. The original file was preserved at:&#x0a;{0}</sys:String>
+  <sys:String x:Key="RecordingRefinement" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">High-quality refinement after recording</sys:String>
+  <sys:String x:Key="RecordingRefinementHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Keep the live preview, then re-transcribe complete tracks with the active offline model. Remote tracks can also use speaker diarization.</sys:String>
+  <sys:String x:Key="RecordingRefinementToggle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">Create a high-quality final transcript after Stop</sys:String>
 </ResourceDictionary>

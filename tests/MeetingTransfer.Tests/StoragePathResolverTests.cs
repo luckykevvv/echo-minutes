@@ -12,7 +12,8 @@ public sealed class StoragePathResolverTests
         {
             DatabasePath = "data/meeting-transfer.sqlite",
             RecordingsDirectory = "recordings",
-            ExportsDirectory = "exports"
+            ExportsDirectory = "exports",
+            LogDirectory = "data/logs"
         };
 
         StoragePathResolver.Resolve(storage, applicationDirectory);
@@ -26,6 +27,9 @@ public sealed class StoragePathResolverTests
         Assert.Equal(
             Path.GetFullPath(Path.Combine(applicationDirectory, "exports")),
             storage.ExportsDirectory);
+        Assert.Equal(
+            Path.GetFullPath(Path.Combine(applicationDirectory, "data/logs")),
+            storage.LogDirectory);
     }
 
     [Fact]
@@ -36,7 +40,8 @@ public sealed class StoragePathResolverTests
         {
             DatabasePath = Path.Combine(customRoot, "meeting.sqlite"),
             RecordingsDirectory = Path.Combine(customRoot, "recordings"),
-            ExportsDirectory = Path.Combine(customRoot, "exports")
+            ExportsDirectory = Path.Combine(customRoot, "exports"),
+            LogDirectory = Path.Combine(customRoot, "logs")
         };
 
         StoragePathResolver.Resolve(storage, Path.Combine(Path.GetTempPath(), "other-app"));
@@ -44,5 +49,6 @@ public sealed class StoragePathResolverTests
         Assert.Equal(Path.GetFullPath(Path.Combine(customRoot, "meeting.sqlite")), storage.DatabasePath);
         Assert.Equal(Path.GetFullPath(Path.Combine(customRoot, "recordings")), storage.RecordingsDirectory);
         Assert.Equal(Path.GetFullPath(Path.Combine(customRoot, "exports")), storage.ExportsDirectory);
+        Assert.Equal(Path.GetFullPath(Path.Combine(customRoot, "logs")), storage.LogDirectory);
     }
 }

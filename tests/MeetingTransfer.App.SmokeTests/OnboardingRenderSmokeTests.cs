@@ -216,6 +216,23 @@ public sealed class OnboardingRenderSmokeTests
                 LocalizationManager.Apply("zh-CN");
                 Assert.Equal(0, disposedCardNotifications);
 
+                var historyHost = Assert.IsType<Grid>(mainWindow.FindName("HistoryHost"));
+                mainViewModel.HistoryCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+                mainWindow.UpdateLayout();
+                Assert.Equal(Visibility.Collapsed, workspaceView.Visibility);
+                Assert.Equal(Visibility.Visible, historyHost.Visibility);
+                var embeddedHistory = Assert.IsType<SessionHistoryView>(Assert.Single(historyHost.Children));
+                embeddedHistory.Measure(new Size(1100, 720));
+                embeddedHistory.Arrange(new Rect(0, 0, 1100, 720));
+                embeddedHistory.UpdateLayout();
+                var historyBackButton = FindButtonByContent(
+                    embeddedHistory,
+                    LocalizationManager.Text("BackWorkspace"));
+                historyBackButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                mainWindow.UpdateLayout();
+                Assert.Equal(Visibility.Visible, workspaceView.Visibility);
+                Assert.Equal(Visibility.Collapsed, historyHost.Visibility);
+
                 var firstSpeaker = mainViewModel.Document.EnsureSpeaker("speaker-1", "Speaker 1");
                 var firstSegment = new TranscriptSegment
                 {
@@ -256,9 +273,38 @@ public sealed class OnboardingRenderSmokeTests
                 RefreshMainCollections(mainViewModel);
                 Assert.False(mainViewModel.MergeSpeakerCommand.CanExecute(firstSpeaker));
                 Assert.True(mainViewModel.MergeSpeakerCommand.CanExecute(secondSpeaker));
-                mainViewModel.MergeSpeakerCommand.Execute(secondSpeaker);
+                mainViewModel.IsBusy = true;
+                Assert.False(mainViewModel.MergeSpeakerCommand.CanExecute(secondSpeaker));
+                mainViewModel.IsBusy = false;
+                mainViewModel.IsRecording = true;
+                Assert.False(mainViewModel.MergeSpeakerCommand.CanExecute(secondSpeaker));
+                mainViewModel.IsRecording = false;
+                mainViewModel.MergeSpeakerCommand.ExecuteAsync(secondSpeaker).GetAwaiter().GetResult();
                 Assert.Single(mainViewModel.Document.Speakers);
                 Assert.All(mainViewModel.Document.Segments, segment => Assert.Equal(firstSpeaker.Id, segment.SpeakerId));
+
+                var segmentToMerge = mainViewModel.Document.Segments.Last();
+                mainViewModel.MergePreviousSegmentCommand.ExecuteAsync(segmentToMerge).GetAwaiter().GetResult();
+                var mergedSegment = Assert.Single(mainViewModel.Document.Segments);
+                Assert.True(mainViewModel.CommitSegmentText(mergedSegment.Id, "Hello world again"));
+                Assert.True(mainViewModel.SplitSegment(mergedSegment.Id, 5));
+                Assert.Equal(2, mainViewModel.Document.Segments.Count);
+                mainViewModel.SegmentSearchText = "again";
+                Assert.Single(mainViewModel.SegmentsView.Cast<TranscriptSegment>());
+                mainViewModel.SegmentSearchText = string.Empty;
+                var secondHalf = mainViewModel.Document.Segments.OrderBy(segment => segment.Start).Last();
+                mainViewModel.MergePreviousSegmentCommand.ExecuteAsync(secondHalf).GetAwaiter().GetResult();
+                Assert.Equal("Hello world again", Assert.Single(mainViewModel.Document.Segments).Text);
+                mainViewModel.DeleteSegmentCommand.ExecuteAsync(Assert.Single(mainViewModel.Document.Segments)).GetAwaiter().GetResult();
+                Assert.Empty(mainViewModel.Document.Segments);
+                Assert.Empty(mainViewModel.Document.Speakers);
+
+                var previousSessionId = mainViewModel.Document.SessionId;
+                mainViewModel.NewSessionAsync().GetAwaiter().GetResult();
+                Assert.NotEqual(previousSessionId, mainViewModel.Document.SessionId);
+                Assert.DoesNotContain(
+                    mainViewModel.SessionStore.ListSessionsAsync().GetAwaiter().GetResult(),
+                    session => session.SessionId == previousSessionId);
 
                 completed = true;
             }
@@ -317,6 +363,29 @@ public sealed class OnboardingRenderSmokeTests
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllBytes(path, [1]);
         }
+    }
+
+    private static Button FindButtonByContent(DependencyObject root, object expectedContent)
+    {
+        for (var index = 0; index < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, index);
+            if (child is Button button && Equals(button.Content, expectedContent))
+            {
+                return button;
+            }
+
+            try
+            {
+                return FindButtonByContent(child, expectedContent);
+            }
+            catch (InvalidOperationException)
+            {
+                // Continue searching sibling branches.
+            }
+        }
+
+        throw new InvalidOperationException($"Button '{expectedContent}' was not found.");
     }
 
     private static string FindRepositoryRoot()

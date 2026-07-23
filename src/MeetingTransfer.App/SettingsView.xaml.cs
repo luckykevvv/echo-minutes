@@ -89,6 +89,7 @@ public partial class SettingsView : UserControl, IDisposable
         OnlineExeBox.Text = _settings.SherpaOnnx.OnlineRecognizerExecutable ?? "";
         OnlineArgsBox.Text = _settings.SherpaOnnx.OnlineArgumentsTemplate ?? "";
         OfflineLanguageBox.SelectedValue = NormalizeOfflineLanguage(_settings.SherpaOnnx.WhisperCppLanguage);
+        RefineRecordingOnStopBox.IsChecked = _settings.App.PostProcessing.RefineRecordingOnStop;
     }
 
     private void ModelsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -113,6 +114,7 @@ public partial class SettingsView : UserControl, IDisposable
             latest.SherpaOnnx.OnlineArgumentsTemplate = EmptyToNull(OnlineArgsBox.Text);
             latest.SherpaOnnx.WhisperCppLanguage = OfflineLanguageBox.SelectedValue as string ?? "bilingual";
             latest.App.Ui.Language = LocalizationManager.Normalize(ApplicationLanguageBox.SelectedValue as string);
+            latest.App.PostProcessing.RefineRecordingOnStop = RefineRecordingOnStopBox.IsChecked == true;
 
             _settingsFileService.Save(latest);
             _languageSaved = true;

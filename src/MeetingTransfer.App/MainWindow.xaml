@@ -42,7 +42,8 @@
                     <TextBlock Text="{Binding AppTitle}" FontWeight="SemiBold" FontSize="13" Margin="9,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
                 <TextBlock x:Name="TitleContextText" Grid.Column="1" Text="{Binding Document.Title}" Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Center" />
-                    <TextBlock x:Name="SettingsTitleText" Grid.Column="1" Text="{DynamicResource SettingsTitle}" Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed" />
+                <TextBlock x:Name="SettingsTitleText" Grid.Column="1" Text="{DynamicResource SettingsTitle}" Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed" />
+                <TextBlock x:Name="HistoryTitleText" Grid.Column="1" Text="{DynamicResource SessionHistoryTitle}" Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <TextBlock x:Name="BuildVersionText"
                                Text="{x:Static updates:UpdateCoordinator.CurrentVersionText}"
@@ -131,7 +132,15 @@
                                 <DataTemplate><TextBlock Text="{Binding DisplayName}" /></DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
-                        <Button Content="{Binding ImportLabel}" Command="{Binding ImportCommand}" />
+                        <StackPanel>
+                            <Button Content="{Binding ImportLabel}" Command="{Binding ImportCommand}" />
+                            <Button
+                                    Content="{Binding CancelOperationLabel}"
+                                    Command="{Binding CancelOperationCommand}"
+                                    Style="{StaticResource QuietButton}"
+                                    Margin="0,6,0,0"
+                                    Visibility="{Binding CanCancelOperation, Converter={x:Static local:BoolToVisibilityConverter.Instance}}" />
+                        </StackPanel>
                     </StackPanel>
 
                     <StackPanel Grid.Row="2">
@@ -149,6 +158,7 @@
                                 <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource MutedBrush}" FontSize="11" LineHeight="17" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
+                        <Button Content="{Binding HistoryLabel}" Command="{Binding HistoryCommand}" Style="{StaticResource QuietButton}" HorizontalContentAlignment="Left" Padding="8,7" Margin="0,0,0,4" />
                         <Button Content="{Binding SettingsLabel}" Command="{Binding SettingsCommand}" Style="{StaticResource QuietButton}" HorizontalContentAlignment="Left" Padding="8,7" />
                     </StackPanel>
                 </Grid>
@@ -170,11 +180,15 @@
                         <TextBlock Text="{Binding Document.Title}" FontFamily="Segoe UI Variable Display, Segoe UI, Microsoft YaHei UI" FontSize="28" FontWeight="SemiBold" Margin="0,5,0,0" />
                         <TextBlock Text="{Binding SessionSummary}" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,5,0,0" />
                     </StackPanel>
-                    <Button Grid.Column="1" Content="{Binding ExportLabel}" Command="{Binding ExportCommand}" VerticalAlignment="Top" MinWidth="94" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Top" Width="190">
+                        <Button Content="{Binding ExportLabel}" Command="{Binding ExportCommand}" HorizontalAlignment="Right" MinWidth="94" />
+                        <TextBlock Text="{Binding SearchTranscriptLabel}" Style="{StaticResource EyebrowText}" Margin="0,11,0,5" />
+                        <TextBox Text="{Binding SegmentSearchText, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
                 </Grid>
 
                 <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="10">
-                    <ListBox ItemsSource="{Binding Segments}" Padding="10,8">
+                    <ListBox ItemsSource="{Binding SegmentsView}" Padding="10,8">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="8,6,8,4">
@@ -187,7 +201,39 @@
                                     <Border Grid.Column="1" Background="{StaticResource AccentBrush}" CornerRadius="2" Margin="0,1,0,3" Opacity="0.7" />
                                     <StackPanel Grid.Column="2" Margin="14,0,10,13">
                                         <TextBlock Text="{Binding SpeakerName}" Foreground="{StaticResource AccentBrush}" FontSize="12" FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Foreground="{StaticResource InkBrush}" FontSize="14" LineHeight="22" Margin="0,5,0,0" />
+                                        <TextBox Text="{Binding Text, Mode=OneWay}"
+                                                 TextWrapping="Wrap"
+                                                 AcceptsReturn="True"
+                                                 Foreground="{StaticResource InkBrush}"
+                                                 FontSize="14"
+                                                 Background="Transparent"
+                                                 BorderBrush="Transparent"
+                                                 BorderThickness="0"
+                                                 Padding="0"
+                                                 Margin="0,5,0,0"
+                                                 LostKeyboardFocus="SegmentTextBox_LostKeyboardFocus"
+                                                 KeyDown="SegmentTextBox_KeyDown" />
+                                        <TextBlock Text="{Binding DataContext.SegmentEditHint, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                   Foreground="{StaticResource SubtleBrush}"
+                                                   FontSize="10"
+                                                   Margin="0,5,0,0" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                            <Button Content="{Binding DataContext.MergePreviousLabel, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    Command="{Binding DataContext.MergePreviousSegmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{StaticResource QuietButton}"
+                                                    Padding="5,2"
+                                                    MinHeight="23"
+                                                    FontSize="10" />
+                                            <Button Content="{Binding DataContext.DeleteSegmentLabel, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    Command="{Binding DataContext.DeleteSegmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{StaticResource QuietButton}"
+                                                    Padding="5,2"
+                                                    MinHeight="23"
+                                                    FontSize="10"
+                                                    Margin="6,0,0,0" />
+                                        </StackPanel>
                                     </StackPanel>
                                     <Border Grid.Column="0" Grid.ColumnSpan="3" VerticalAlignment="Bottom" Height="1" Background="{StaticResource LineBrush}" />
                                 </Grid>
@@ -301,6 +347,10 @@
         </Grid>
 
         <Grid x:Name="SettingsHost"
+              Grid.Row="1"
+              Background="{StaticResource WindowBrush}"
+              Visibility="Collapsed" />
+        <Grid x:Name="HistoryHost"
               Grid.Row="1"
               Background="{StaticResource WindowBrush}"
               Visibility="Collapsed" />

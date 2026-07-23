@@ -23,6 +23,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         var viewModel = new MainWindowViewModel();
         viewModel.SettingsRequested += ViewModel_SettingsRequested;
+        viewModel.HistoryRequested += ViewModel_HistoryRequested;
         DataContext = viewModel;
     }
 
@@ -43,6 +44,27 @@ public partial class MainWindow : Window
         TitleContextText.Visibility = Visibility.Collapsed;
         SettingsTitleText.Visibility = Visibility.Visible;
         SettingsHost.Visibility = Visibility.Visible;
+    }
+
+    private void ViewModel_HistoryRequested(object? sender, EventArgs e)
+    {
+        if (HistoryHost.Visibility == Visibility.Visible ||
+            DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var historyView = new SessionHistoryView(viewModel.SessionStore, viewModel.Document.SessionId);
+        historyView.CloseRequested += HistoryView_CloseRequested;
+        historyView.NewSessionRequested += HistoryView_NewSessionRequested;
+        historyView.OpenSessionRequested += HistoryView_OpenSessionRequested;
+
+        HistoryHost.Children.Clear();
+        HistoryHost.Children.Add(historyView);
+        WorkspaceView.Visibility = Visibility.Collapsed;
+        TitleContextText.Visibility = Visibility.Collapsed;
+        HistoryTitleText.Visibility = Visibility.Visible;
+        HistoryHost.Visibility = Visibility.Visible;
     }
 
     private void SettingsView_SettingsSaved(object? sender, EventArgs e)
@@ -74,6 +96,61 @@ public partial class MainWindow : Window
         SettingsHost.Visibility = Visibility.Collapsed;
         SettingsHost.Children.Clear();
         SettingsTitleText.Visibility = Visibility.Collapsed;
+        TitleContextText.Visibility = Visibility.Visible;
+        WorkspaceView.Visibility = Visibility.Visible;
+    }
+
+    private void HistoryView_CloseRequested(object? sender, EventArgs e)
+        => CloseHistoryView(sender as SessionHistoryView);
+
+    private async void HistoryView_NewSessionRequested(object? sender, EventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        try
+        {
+            await viewModel.NewSessionAsync().ConfigureAwait(true);
+            CloseHistoryView(sender as SessionHistoryView);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, LocalizationManager.Text("HistoryLoadFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void HistoryView_OpenSessionRequested(object? sender, SessionOpenRequestedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        try
+        {
+            await viewModel.OpenStoredSessionAsync(e.SessionId).ConfigureAwait(true);
+            CloseHistoryView(sender as SessionHistoryView);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, LocalizationManager.Text("HistoryLoadFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void CloseHistoryView(SessionHistoryView? historyView)
+    {
+        if (historyView is not null)
+        {
+            historyView.CloseRequested -= HistoryView_CloseRequested;
+            historyView.NewSessionRequested -= HistoryView_NewSessionRequested;
+            historyView.OpenSessionRequested -= HistoryView_OpenSessionRequested;
+        }
+
+        HistoryHost.Visibility = Visibility.Collapsed;
+        HistoryHost.Children.Clear();
+        HistoryTitleText.Visibility = Visibility.Collapsed;
         TitleContextText.Visibility = Visibility.Visible;
         WorkspaceView.Visibility = Visibility.Visible;
     }
@@ -113,6 +190,49 @@ public partial class MainWindow : Window
         }
     }
 
+    private void SegmentTextBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        => CommitSegmentText(sender);
+
+    private void SegmentTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox textBox ||
+            textBox.DataContext is not TranscriptSegment segment ||
+            DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            if (viewModel.CommitSegmentText(segment.Id, textBox.Text))
+            {
+                viewModel.SplitSegment(segment.Id, textBox.CaretIndex);
+            }
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            textBox.Text = segment.Text;
+            Keyboard.ClearFocus();
+            e.Handled = true;
+        }
+    }
+
+    private void CommitSegmentText(object sender)
+    {
+        if (sender is not TextBox textBox ||
+            textBox.DataContext is not TranscriptSegment segment ||
+            DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        if (!viewModel.CommitSegmentText(segment.Id, textBox.Text))
+        {
+            textBox.Text = segment.Text;
+        }
+    }
+
     private void CommitSpeakerName(object sender)
     {
         if (sender is not TextBox textBox ||
@@ -146,6 +266,7 @@ public partial class MainWindow : Window
             await viewModel.CompleteOnboardingAsync().ConfigureAwait(true);
         }
 
+        App.ShowPendingConfigurationRecovery(this);
         await _updateCoordinator.CheckAndPromptAsync(this, showUpToDate: false).ConfigureAwait(true);
     }
 
@@ -180,9 +301,18 @@ public partial class MainWindow : Window
                 settingsView.Dispose();
             }
             SettingsHost.Children.Clear();
+            foreach (var historyView in HistoryHost.Children.OfType<SessionHistoryView>().ToArray())
+            {
+                historyView.CloseRequested -= HistoryView_CloseRequested;
+                historyView.NewSessionRequested -= HistoryView_NewSessionRequested;
+                historyView.OpenSessionRequested -= HistoryView_OpenSessionRequested;
+            }
+            HistoryHost.Children.Clear();
 
             if (DataContext is MainWindowViewModel viewModel)
             {
+                viewModel.SettingsRequested -= ViewModel_SettingsRequested;
+                viewModel.HistoryRequested -= ViewModel_HistoryRequested;
                 await viewModel.ShutdownAsync().ConfigureAwait(true);
             }
         }

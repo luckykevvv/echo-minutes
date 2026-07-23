@@ -132,7 +132,7 @@ public sealed class ModelDownloader
 
                     if (file.Extract is not null)
                     {
-                        ExtractSingleFile(tempPath, file.Extract);
+                        ExtractSingleFile(tempPath, file.Extract, maximumDownloadBytes);
                     }
 
                     if (!string.IsNullOrWhiteSpace(file.Sha256))
@@ -213,7 +213,10 @@ public sealed class ModelDownloader
         return Math.Clamp(doubled, MinimumDownloadLimitBytes, MaximumDownloadLimitBytes);
     }
 
-    private static void ExtractSingleFile(string archivePath, ModelFileExtract extract)
+    private static void ExtractSingleFile(
+        string archivePath,
+        ModelFileExtract extract,
+        long maximumExtractedBytes)
     {
         if (!string.Equals(extract.Format, "tar.bz2", StringComparison.OrdinalIgnoreCase))
         {
@@ -244,6 +247,12 @@ public sealed class ModelDownloader
                         continue;
                     }
 
+                    if (entry.Size < 0 || entry.Size > maximumExtractedBytes)
+                    {
+                        throw new InvalidDataException(
+                            $"Model archive member exceeds the allowed extracted size of {maximumExtractedBytes} bytes.");
+                    }
+
                     reader.WriteEntryToFile(extractedPath, new ExtractionOptions
                     {
                         ExtractFullPath = false,
@@ -252,6 +261,12 @@ public sealed class ModelDownloader
                     found = true;
                     break;
                 }
+            }
+
+            if (File.Exists(extractedPath) && new FileInfo(extractedPath).Length > maximumExtractedBytes)
+            {
+                throw new InvalidDataException(
+                    $"Extracted model file exceeds the allowed size of {maximumExtractedBytes} bytes.");
             }
 
             if (!found)

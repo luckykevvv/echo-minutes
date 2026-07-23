@@ -10,6 +10,7 @@ public static class StoragePathResolver
         storage.DatabasePath = ResolvePath(storage.DatabasePath, root);
         storage.RecordingsDirectory = ResolvePath(storage.RecordingsDirectory, root);
         storage.ExportsDirectory = ResolvePath(storage.ExportsDirectory, root);
+        storage.LogDirectory = ResolvePath(storage.LogDirectory, root);
     }
 
     private static string ResolvePath(string path, string baseDirectory)

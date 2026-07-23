@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Reflection;
 using MeetingTransfer.Core.Models;
 using SharpCompress.Common;
 using SharpCompress.Writers;
@@ -134,6 +135,28 @@ public sealed class ModelDownloaderTests : IDisposable
 
         Assert.Contains("allowed limit", exception.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, handler.GetCount);
+    }
+
+    [Fact]
+    public void ExtractSingleFile_RejectsArchiveMemberExpansionBeyondLimit()
+    {
+        var archivePath = Path.Combine(_tempDir, "oversized.tar.bz2");
+        File.WriteAllBytes(archivePath, CreateTarBz2("bundle/model.bin", new byte[64]));
+        var method = typeof(ModelDownloader).GetMethod(
+            "ExtractSingleFile",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(method);
+
+        var invocation = Assert.Throws<TargetInvocationException>(() => method!.Invoke(null,
+        [
+            archivePath,
+            new ModelFileExtract { Format = "tar.bz2", Member = "bundle/model.bin" },
+            16L
+        ]));
+
+        var error = Assert.IsType<InvalidDataException>(invocation.InnerException);
+        Assert.Contains("allowed", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(archivePath + ".extracted"));
     }
 
     private static ModelDescriptor MakeModel(byte[] content)

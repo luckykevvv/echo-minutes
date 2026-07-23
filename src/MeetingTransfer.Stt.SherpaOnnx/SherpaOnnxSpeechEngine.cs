@@ -161,9 +161,8 @@ public sealed partial class SherpaOnnxSpeechEngine : ISpeechEngine
             // longer file must be split into overlapping 30 s chunks and stitched
             // back together. Short files (<= 30 s) still go through the single-call
             // path for low overhead.
-            var duration = TryProbeAudioDuration(wavPath, out var probedDuration)
-                ? probedDuration
-                : TimeSpan.FromSeconds(30);
+            var duration = await ProbeAudioDurationAsync(wavPath, cancellationToken).ConfigureAwait(false)
+                ?? TimeSpan.FromSeconds(30);
 
             const int chunkSeconds = 30;
             if (duration > TimeSpan.FromSeconds(chunkSeconds + 1))
@@ -770,9 +769,8 @@ public sealed partial class SherpaOnnxSpeechEngine : ISpeechEngine
         IProgress<TranscriptionProgress>? progress,
         CancellationToken cancellationToken)
     {
-        var duration = TryProbeAudioDuration(wavPath, out var probedDuration)
-            ? probedDuration
-            : TimeSpan.Zero;
+        var duration = await ProbeAudioDurationAsync(wavPath, cancellationToken).ConfigureAwait(false)
+            ?? TimeSpan.Zero;
 
         // Parse whisper.cpp's `progress = X%` stderr callbacks into progress reports.
         // Each window the model processes emits a percent that can exceed 100 when the
@@ -994,8 +992,11 @@ public sealed partial class SherpaOnnxSpeechEngine : ISpeechEngine
             var wouldExceed = segText.Length + 1 + t.Text.Length > maxLen;
             var prevGapMs = i > 0 ? t.StartMs - tokens[i - 1].EndMs : 0;
             var startsNewSentence = (i > 0 && tokens[i - 1].EndsSentence) || prevGapMs >= 700;
+            var exceedsDuration = segHadContent &&
+                maxSegmentSeconds > 0 &&
+                t.EndMs - segStartMs > maxSegmentSeconds * 1000;
 
-            if (segHadContent && (startsNewSentence || wouldExceed))
+            if (segHadContent && (startsNewSentence || wouldExceed || exceedsDuration))
             {
                 Flush(i);
                 segStartMs = t.StartMs;
@@ -1030,10 +1031,6 @@ public sealed partial class SherpaOnnxSpeechEngine : ISpeechEngine
 
         Flush(tokens.Count);
 
-        // maxSegmentSeconds is currently only used as an informational hint here;
-        // we leave it in the signature so the call site is forward-compatible with
-        // a future "split long segments at fixed windows" mode.
-        _ = maxSegmentSeconds;
         return result;
     }
 
@@ -1149,9 +1146,8 @@ public sealed partial class SherpaOnnxSpeechEngine : ISpeechEngine
         IProgress<TranscriptionProgress>? progress,
         CancellationToken cancellationToken)
     {
-        var duration = TryProbeAudioDuration(wavPath, out var probedDuration)
-            ? probedDuration
-            : TimeSpan.FromSeconds(30);
+        var duration = await ProbeAudioDurationAsync(wavPath, cancellationToken).ConfigureAwait(false)
+            ?? TimeSpan.FromSeconds(30);
 
         const int chunkSeconds = 30;
         if (duration > TimeSpan.FromSeconds(chunkSeconds + 1))
@@ -1205,9 +1201,8 @@ public sealed partial class SherpaOnnxSpeechEngine : ISpeechEngine
         CancellationToken cancellationToken)
     {
         const int overlapSeconds = 5;
-        var duration = TryProbeAudioDuration(wavPath, out var probed)
-            ? probed
-            : throw new InvalidOperationException(
+        var duration = await ProbeAudioDurationAsync(wavPath, cancellationToken).ConfigureAwait(false)
+            ?? throw new InvalidOperationException(
                 $"ffprobe could not determine the duration of '{wavPath}'. " +
                 "Chunked Whisper transcription requires ffmpeg/ffprobe to be installed next to the executable.");
 
@@ -1417,46 +1412,77 @@ public sealed partial class SherpaOnnxSpeechEngine : ISpeechEngine
         }
     }
 
-    private bool TryProbeAudioDuration(string wavPath, out TimeSpan duration)
+    private async Task<TimeSpan?> ProbeAudioDurationAsync(
+        string wavPath,
+        CancellationToken cancellationToken)
     {
-        duration = TimeSpan.Zero;
         var ffprobe = ResolveFfprobePath();
         if (string.IsNullOrEmpty(ffprobe) || !File.Exists(wavPath))
         {
-            return false;
+            return null;
         }
 
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(15));
+        Process? process = null;
         try
         {
             var startInfo = new ProcessStartInfo
             {
                 FileName = ffprobe,
-                Arguments = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{wavPath}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-            using var process = Process.Start(startInfo);
-            if (process is null)
+            foreach (var argument in new[]
             {
-                return false;
+                "-v", "error", "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1", wavPath
+            })
+            {
+                startInfo.ArgumentList.Add(argument);
             }
 
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            process.WaitForExit();
-            var output = outputTask.GetAwaiter().GetResult().Trim();
+            process = Process.Start(startInfo);
+            if (process is null)
+            {
+                return null;
+            }
+
+            var outputTask = process.StandardOutput.ReadToEndAsync(timeout.Token);
+            var errorTask = process.StandardError.ReadToEndAsync(timeout.Token);
+            await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
+            var output = (await outputTask.ConfigureAwait(false)).Trim();
+            _ = await errorTask.ConfigureAwait(false);
             if (double.TryParse(output, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) && seconds > 0)
             {
-                duration = TimeSpan.FromSeconds(seconds);
-                return true;
+                return TimeSpan.FromSeconds(seconds);
             }
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // A broken media file or ffprobe process must not freeze the UI.
         }
         catch
         {
-            // best-effort probing
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            // Best-effort probing; callers choose a safe fallback when unavailable.
         }
-        return false;
+        finally
+        {
+            if (process is not null)
+            {
+                try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }
+                try { await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false); } catch { }
+                process.Dispose();
+            }
+        }
+
+        return null;
     }
 
     private string? ResolveFfmpegPath()
@@ -1513,11 +1539,8 @@ public sealed partial class SherpaOnnxSpeechEngine : ISpeechEngine
     }
 
     private static async Task<string> RunProcessAsync(string executable, string arguments, CancellationToken cancellationToken)
-    {
-        var (stdout, _) = await RunProcessAsyncCore(executable, arguments, onStderrLine: null, cancellationToken)
+        => await ExternalCliRunner.RunAsync(executable, arguments, onStderrLine: null, cancellationToken)
             .ConfigureAwait(false);
-        return stdout;
-    }
 
     /// <summary>
     /// Like <see cref="RunProcessAsync(string,string,CancellationToken)"/> but
@@ -1530,135 +1553,8 @@ public sealed partial class SherpaOnnxSpeechEngine : ISpeechEngine
         string arguments,
         Action<string> onStderrLine,
         CancellationToken cancellationToken)
-    {
-        var (stdout, _) = await RunProcessAsyncCore(executable, arguments, onStderrLine, cancellationToken)
+        => await ExternalCliRunner.RunAsync(executable, arguments, onStderrLine, cancellationToken)
             .ConfigureAwait(false);
-        return stdout;
-    }
-
-    private static async Task<(string Stdout, string Stderr)> RunProcessAsyncCore(
-        string executable,
-        string arguments,
-        Action<string>? onStderrLine,
-        CancellationToken cancellationToken)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = executable,
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException($"Unable to start {executable}.");
-
-        var stderrBuilder = new System.Text.StringBuilder();
-
-        // We hold stdoutReader/stderrReader so we can dispose them on cancellation,
-        // which unblocks the underlying ReadXxxAsync calls. Without this the
-        // WaitForExitAsync below would hang forever waiting for the process to
-        // finish writing to a pipe we no longer care about.
-        Task<string> stdoutTask;
-        Task stderrTask;
-        System.IO.StreamReader stdoutReader;
-        System.IO.StreamReader stderrReader;
-        try
-        {
-            stdoutReader = process.StandardOutput;
-            stderrReader = process.StandardError;
-            stdoutTask = stdoutReader.ReadToEndAsync(cancellationToken);
-            stderrTask = Task.Run(async () =>
-            {
-                string? line;
-                while ((line = await stderrReader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
-                {
-                    stderrBuilder.AppendLine(line);
-                    if (onStderrLine is not null)
-                    {
-                        try
-                        {
-                            onStderrLine(line);
-                        }
-                        catch
-                        {
-                            // never let a UI-side progress callback kill the process reader
-                        }
-                    }
-                }
-            }, cancellationToken);
-        }
-        catch
-        {
-            // Process never started cleanly; kill whatever's running and bail.
-            try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }
-            throw;
-        }
-
-        string stdoutText;
-        try
-        {
-            stdoutText = await stdoutTask.ConfigureAwait(false);
-            await stderrTask.ConfigureAwait(false);
-            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // User cancelled. Kill the spawned process and wait (without the token)
-            // so we don't leak orphan processes when the UI thread disposes this engine.
-            try
-            {
-                if (!process.HasExited)
-                {
-                    process.Kill(entireProcessTree: true);
-                }
-            }
-            catch
-            {
-                // best-effort; if Kill fails we still want to surface the cancellation
-            }
-            try
-            {
-                // Drain whatever the readers have buffered so they don't deadlock
-                // against the killed process's stdout/stderr file descriptors.
-                await stdoutTask.ConfigureAwait(false);
-                await stderrTask.ConfigureAwait(false);
-            }
-            catch
-            {
-                // ignored — we're already in the cancel path
-            }
-            try
-            {
-                // WaitForExit without a token so we actually return after Kill().
-                process.WaitForExit(2000);
-            }
-            catch
-            {
-                // ignored
-            }
-            throw;
-        }
-
-        var stderrText = stderrBuilder.ToString();
-
-        // sherpa-onnx cli is inconsistent about which stream carries results:
-        //   * sherpa-onnx-vad-with-online-asr.exe  -> per-segment text on stdout, stats on stderr
-        //   * sherpa-onnx.exe (offline)            -> init banner on stdout, JSON + text on stderr
-        // Merge both streams so ExtractTranscriptText can pick the right lines regardless.
-        var combined = string.Join(
-            "\n",
-            new[] { stdoutText, stderrText }.Where(s => !string.IsNullOrEmpty(s)));
-
-        if (process.ExitCode != 0)
-        {
-            throw new InvalidOperationException($"sherpa-onnx exited with {process.ExitCode}: {stderrText}");
-        }
-
-        return (combined, stderrText);
-    }
 
     private static string ExtractTranscriptText(string output)
     {

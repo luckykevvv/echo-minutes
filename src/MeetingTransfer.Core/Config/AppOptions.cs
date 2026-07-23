@@ -6,7 +6,13 @@ public sealed class AppOptions
     public ImportOptions Import { get; set; } = new();
     public AudioOptions Audio { get; set; } = new();
     public SpeechOptions Speech { get; set; } = new();
+    public PostProcessingOptions PostProcessing { get; set; } = new();
     public UiOptions Ui { get; set; } = new();
+}
+
+public sealed class PostProcessingOptions
+{
+    public bool RefineRecordingOnStop { get; set; }
 }
 
 public sealed class UiOptions
@@ -20,6 +26,7 @@ public sealed class StorageOptions
     public string DatabasePath { get; set; } = "data/meeting-transfer.sqlite";
     public string RecordingsDirectory { get; set; } = "recordings";
     public string ExportsDirectory { get; set; } = "exports";
+    public string LogDirectory { get; set; } = "data/logs";
 }
 
 public sealed class ImportOptions

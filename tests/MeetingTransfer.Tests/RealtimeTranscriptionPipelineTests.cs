@@ -30,6 +30,39 @@ public sealed class RealtimeTranscriptionPipelineTests
         Assert.Equal(["process-start", "process-end", "finalize"], engine.Events);
     }
 
+    [Fact]
+    public async Task TryEnqueue_UsesBoundedQueueAndCountsRejectedChunks()
+    {
+        var engine = new BlockingSpeechEngine();
+        var pipeline = new RealtimeTranscriptionPipeline(
+            engine,
+            new TranscriptDocument(),
+            capacity: 1);
+        var chunk = CreateChunk();
+
+        Assert.True(pipeline.TryEnqueue(chunk));
+        await engine.ProcessEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.True(pipeline.TryEnqueue(chunk));
+        Assert.False(pipeline.TryEnqueue(chunk));
+        Assert.Equal(1, pipeline.PendingChunkCount);
+        Assert.Equal(1, pipeline.DroppedChunkCount);
+
+        engine.AllowProcessToFinish.TrySetResult();
+        await pipeline.FinalizeAsync(CancellationToken.None);
+        Assert.Equal(2, engine.Events.Count(item => item == "process-start"));
+        Assert.Equal("finalize", engine.Events[^1]);
+    }
+
+    private static PcmAudioChunk CreateChunk()
+        => new(
+            "mic",
+            AudioSourceKind.Microphone,
+            DateTimeOffset.UtcNow,
+            TimeSpan.Zero,
+            16000,
+            1,
+            [0, 0]);
+
     private sealed class BlockingSpeechEngine : ISpeechEngine
     {
         public string Name => "test";

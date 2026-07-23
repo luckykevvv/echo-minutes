@@ -165,4 +165,22 @@
   <sys:String x:Key="Model.speaker-diarization.Description" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">为导入录音标记“说话人 1、说话人 2”等标签所需的功能模型，包含 pyannote 分段和 3D-Speaker ERes2Net 声纹嵌入模型。</sys:String>
   <sys:String x:Key="Model.speaker-diarization.Speed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">离线转写完成后由 CPU 进行后处理。</sys:String>
   <sys:String x:Key="Model.speaker-diarization.Accuracy" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">根据声纹嵌入聚类说话轮次；快速交接处的文本归属仍可能存在偏差。</sys:String>
+  <sys:String x:Key="SessionHistoryLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">历史会话</sys:String>
+  <sys:String x:Key="SessionHistoryTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">会议档案</sys:String>
+  <sys:String x:Key="SessionHistoryHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">打开、回顾或清理已经保存在本机的转写会话。</sys:String>
+  <sys:String x:Key="NewMeetingLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">＋ 新建会议</sys:String>
+  <sys:String x:Key="CurrentSessionLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">当前会话</sys:String>
+  <sys:String x:Key="OpenSessionLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">打开</sys:String>
+  <sys:String x:Key="DeleteSessionLabel" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">删除</sys:String>
+  <sys:String x:Key="NoSessionsTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">还没有保存的会议</sys:String>
+  <sys:String x:Key="NoSessionsHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">开始一次实时录音或导入媒体，完成后的转写会自动出现在这里。</sys:String>
+  <sys:String x:Key="HistoryLoadFailed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">无法读取历史会话</sys:String>
+  <sys:String x:Key="DeleteSessionConfirmTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">删除本地会话</sys:String>
+  <sys:String x:Key="DeleteSessionConfirm" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">确定要删除“{0}”的本地转写记录吗？录音文件不会被删除。</sys:String>
+  <sys:String x:Key="DeleteSessionFailed" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">删除会话失败</sys:String>
+  <sys:String x:Key="ConfigRecoveredTitle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">配置已自动恢复</sys:String>
+  <sys:String x:Key="ConfigRecoveredMessage" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">EchoMinutes 检测到无法读取的配置，已恢复安全默认值。原文件保存在：&#x0a;{0}</sys:String>
+  <sys:String x:Key="RecordingRefinement" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">停止后的高质量精修</sys:String>
+  <sys:String x:Key="RecordingRefinementHint" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">保留实时预览，停止录音后使用当前离线模型重新转写完整音轨；远端音轨可继续执行说话人分离。</sys:String>
+  <sys:String x:Key="RecordingRefinementToggle" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">停止录音后自动生成高质量最终稿</sys:String>
 </ResourceDictionary>

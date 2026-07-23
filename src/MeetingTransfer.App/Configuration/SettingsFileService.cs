@@ -14,6 +14,7 @@ public sealed class SettingsFileService
     };
 
     private readonly string _baseDirectory;
+    private readonly List<string> _recoveredFiles = [];
 
     public SettingsFileService(string? baseDirectory = null)
     {
@@ -24,15 +25,25 @@ public sealed class SettingsFileService
     public string ModelsPath => Path.Combine(_baseDirectory, "models.json");
     public string AppSettingsExamplePath => Path.Combine(_baseDirectory, "appsettings.example.json");
     public string ModelsExamplePath => Path.Combine(_baseDirectory, "models.example.json");
+    public IReadOnlyList<string> RecoveredFiles => _recoveredFiles;
 
     public RuntimeSettings Load()
     {
         EnsureWritableFiles();
 
-        var app = ReadJson<AppOptions>(AppSettingsPath) ?? new AppOptions();
-        var models = ReadJson<ModelsFile>(ModelsPath) ?? new ModelsFile();
+        _recoveredFiles.Clear();
+        var app = ReadJsonWithRecovery(AppSettingsPath, AppSettingsExamplePath, static () => new AppOptions());
+        var models = ReadJsonWithRecovery(ModelsPath, ModelsExamplePath, static () => new ModelsFile());
+        app.Storage ??= new StorageOptions();
+        app.Import ??= new ImportOptions();
+        app.Audio ??= new AudioOptions();
+        app.Speech ??= new SpeechOptions();
+        app.PostProcessing ??= new PostProcessingOptions();
         app.Ui ??= new UiOptions();
+        models.SherpaOnnx ??= new SherpaOnnxOptions();
         app.Speech.Engine = "SherpaOnnx";
+
+        NormalizeAppOptions(app);
 
         var settings = new RuntimeSettings
         {
@@ -105,6 +116,38 @@ public sealed class SettingsFileService
         }
     }
 
+    private T ReadJsonWithRecovery<T>(
+        string path,
+        string examplePath,
+        Func<T> createDefault)
+        where T : class
+    {
+        try
+        {
+            return ReadJson<T>(path)
+                ?? throw new JsonException($"Configuration file '{path}' contains null instead of an object.");
+        }
+        catch (JsonException)
+        {
+            var backupPath = path + $".broken-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}";
+            File.Move(path, backupPath);
+            _recoveredFiles.Add(backupPath);
+
+            T recovered;
+            try
+            {
+                recovered = ReadJson<T>(examplePath) ?? createDefault();
+            }
+            catch (JsonException)
+            {
+                recovered = createDefault();
+            }
+
+            WriteJson(path, recovered);
+            return recovered;
+        }
+    }
+
     private static T? ReadJson<T>(string path)
     {
         if (!File.Exists(path))
@@ -125,10 +168,35 @@ public sealed class SettingsFileService
 
         var json = JsonSerializer.Serialize(value, JsonOptions);
         var tempPath = path + ".tmp";
-        File.WriteAllText(tempPath, json);
-
-        File.Move(tempPath, path, overwrite: true);
+        try
+        {
+            File.WriteAllText(tempPath, json);
+            File.Move(tempPath, path, overwrite: true);
+        }
+        finally
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+        }
     }
+
+    private static void NormalizeAppOptions(AppOptions app)
+    {
+        app.Storage.DatabasePath = NormalizePath(app.Storage.DatabasePath, "data/meeting-transfer.sqlite");
+        app.Storage.RecordingsDirectory = NormalizePath(app.Storage.RecordingsDirectory, "recordings");
+        app.Storage.ExportsDirectory = NormalizePath(app.Storage.ExportsDirectory, "exports");
+        app.Storage.LogDirectory = NormalizePath(app.Storage.LogDirectory, "data/logs");
+        app.Audio.SampleRate = app.Audio.SampleRate is >= 8000 and <= 192000 ? app.Audio.SampleRate : 16000;
+        app.Audio.Channels = app.Audio.Channels is 1 or 2 ? app.Audio.Channels : 1;
+        app.Audio.ChunkMilliseconds = app.Audio.ChunkMilliseconds is >= 20 and <= 5000
+            ? app.Audio.ChunkMilliseconds
+            : 200;
+        app.Ui.Language = string.Equals(app.Ui.Language, "en-US", StringComparison.OrdinalIgnoreCase)
+            ? "en-US"
+            : "zh-CN";
+    }
+
+    private static string NormalizePath(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
 
     private bool ApplyBuiltInSherpaDefaults(SherpaOnnxOptions options)
     {

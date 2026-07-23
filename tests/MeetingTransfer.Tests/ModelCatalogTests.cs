@@ -329,7 +329,7 @@ public sealed class ModelCatalogTests : IDisposable
         File.WriteAllBytes(Path.Combine(legacyDir, "encoder.onnx"), [1]);
 
         var path = catalog.GetInstalledFilePath(model, model.Files[0]);
-        Assert.EndsWith("m\\encoder.onnx", path);
+        Assert.EndsWith(Path.Combine("m", "encoder.onnx"), path);
         Assert.Equal(42, File.ReadAllBytes(path)[0]);
     }
 

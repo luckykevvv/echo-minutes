@@ -3,10 +3,16 @@ using NAudio.Wave;
 
 namespace MeetingTransfer.Audio;
 
+public sealed record RecordedAudioTrack(
+    string Path,
+    string SourceId,
+    AudioSourceKind SourceKind);
+
 public sealed class PcmSessionRecorder : IDisposable
 {
     private readonly string _directory;
     private readonly Dictionary<string, WaveFileWriter> _writers = [];
+    private readonly Dictionary<string, RecordedAudioTrack> _tracks = [];
     private readonly object _lock = new();
     private bool _disposed;
 
@@ -18,35 +24,48 @@ public sealed class PcmSessionRecorder : IDisposable
 
     public void Write(PcmAudioChunk chunk)
     {
-        if (_disposed || chunk.Pcm16.Length == 0)
-        {
-            return;
-        }
-
         lock (_lock)
         {
+            // Stop can race the final capture callback. Re-check under the same
+            // lock used by Dispose so a writer cannot be recreated after cleanup.
+            if (_disposed || chunk.Pcm16.Length == 0)
+            {
+                return;
+            }
+
             var writer = GetWriter(chunk);
             writer.Write(chunk.Pcm16, 0, chunk.Pcm16.Length);
             writer.Flush();
         }
     }
 
+    public IReadOnlyList<RecordedAudioTrack> RecordedTracks
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _tracks.Values.ToArray();
+            }
+        }
+    }
+
     public void Dispose()
     {
-        if (_disposed)
-        {
-            return;
-        }
-
         lock (_lock)
         {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
             foreach (var writer in _writers.Values)
             {
                 writer.Dispose();
             }
 
             _writers.Clear();
-            _disposed = true;
         }
     }
 
@@ -62,6 +81,7 @@ public sealed class PcmSessionRecorder : IDisposable
         var path = Path.Combine(_directory, fileName);
         var writer = new WaveFileWriter(path, new WaveFormat(chunk.SampleRate, 16, chunk.Channels));
         _writers.Add(key, writer);
+        _tracks.Add(key, new RecordedAudioTrack(path, chunk.SourceId, chunk.SourceKind));
         return writer;
     }
 
