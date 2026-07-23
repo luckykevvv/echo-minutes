@@ -6,6 +6,7 @@ using MeetingTransfer.App.Configuration;
 using MeetingTransfer.App.Localization;
 using MeetingTransfer.App.ViewModels;
 using MeetingTransfer.App.Updates;
+using MeetingTransfer.Audio;
 using MeetingTransfer.Core.Transcripts;
 
 namespace MeetingTransfer.App;
@@ -19,9 +20,14 @@ public partial class MainWindow : Window
     private readonly UpdateCoordinator _updateCoordinator = new();
 
     public MainWindow()
+        : this(null)
+    {
+    }
+
+    public MainWindow(IAudioPlaybackService? audioPlaybackService)
     {
         InitializeComponent();
-        var viewModel = new MainWindowViewModel();
+        var viewModel = new MainWindowViewModel(audioPlaybackService);
         viewModel.SettingsRequested += ViewModel_SettingsRequested;
         viewModel.HistoryRequested += ViewModel_HistoryRequested;
         DataContext = viewModel;

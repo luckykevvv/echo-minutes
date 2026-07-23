@@ -3,22 +3,19 @@ using NAudio.Wave;
 
 namespace MeetingTransfer.Audio;
 
-public sealed record RecordedAudioTrack(
-    string Path,
-    string SourceId,
-    AudioSourceKind SourceKind);
-
 public sealed class PcmSessionRecorder : IDisposable
 {
     private readonly string _directory;
     private readonly Dictionary<string, WaveFileWriter> _writers = [];
-    private readonly Dictionary<string, RecordedAudioTrack> _tracks = [];
+    private readonly Dictionary<string, SessionAudioTrack> _tracks = [];
     private readonly object _lock = new();
+    private readonly string _recordingId;
     private bool _disposed;
 
     public PcmSessionRecorder(string directory)
     {
         _directory = directory;
+        _recordingId = $"{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}";
         Directory.CreateDirectory(directory);
     }
 
@@ -39,13 +36,15 @@ public sealed class PcmSessionRecorder : IDisposable
         }
     }
 
-    public IReadOnlyList<RecordedAudioTrack> RecordedTracks
+    public IReadOnlyList<SessionAudioTrack> RecordedTracks
     {
         get
         {
             lock (_lock)
             {
-                return _tracks.Values.ToArray();
+                return _tracks.Values
+                    .Select(track => track with { Duration = TryGetDuration(track.Path) })
+                    .ToArray();
             }
         }
     }
@@ -77,11 +76,17 @@ public sealed class PcmSessionRecorder : IDisposable
             return existing;
         }
 
-        var fileName = $"{chunk.SourceKind}-{Sanitize(chunk.SourceId)}.wav";
+        var fileName = $"{_recordingId}-{chunk.SourceKind}-{Sanitize(chunk.SourceId)}.wav";
         var path = Path.Combine(_directory, fileName);
         var writer = new WaveFileWriter(path, new WaveFormat(chunk.SampleRate, 16, chunk.Channels));
         _writers.Add(key, writer);
-        _tracks.Add(key, new RecordedAudioTrack(path, chunk.SourceId, chunk.SourceKind));
+        _tracks.Add(key, new SessionAudioTrack(
+            Guid.NewGuid(),
+            path,
+            chunk.SourceId,
+            chunk.SourceKind,
+            chunk.SessionOffset,
+            null));
         return writer;
     }
 
@@ -91,5 +96,18 @@ public sealed class PcmSessionRecorder : IDisposable
         var chars = value.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray();
         var sanitized = new string(chars);
         return sanitized.Length > 80 ? sanitized[..80] : sanitized;
+    }
+
+    private static TimeSpan? TryGetDuration(string path)
+    {
+        try
+        {
+            using var reader = new WaveFileReader(path);
+            return reader.TotalTime;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

@@ -11,11 +11,13 @@ public sealed record StoredSessionSummary(
     DateTimeOffset CreatedAt,
     int SpeakerCount,
     int SegmentCount,
-    TimeSpan Duration);
+    TimeSpan Duration,
+    int AudioTrackCount,
+    int MissingAudioTrackCount);
 
 public sealed class SqliteTranscriptStore
 {
-    private const int CurrentSchemaVersion = 2;
+    private const int CurrentSchemaVersion = 3;
     private readonly string _databasePath;
     private readonly SemaphoreSlim _initializeGate = new(1, 1);
     private bool _initialized;
@@ -85,11 +87,14 @@ public sealed class SqliteTranscriptStore
             // moved to a later session. Reconstruct any missing session-local rows
             // from the segment snapshots so old transcripts remain loadable.
             await ReconstructSpeakersFromSegmentsAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+            await CreateAudioTrackTableAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
             await ExecuteAsync(connection, transaction, $"""
                 CREATE INDEX IF NOT EXISTS idx_sessions_created_at
                     ON sessions(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_segments_session_start
                     ON segments(session_id, start_ms, end_ms);
+                CREATE INDEX IF NOT EXISTS idx_audio_tracks_session_offset
+                    ON audio_tracks(session_id, timeline_offset_ms);
                 PRAGMA user_version = {CurrentSchemaVersion};
                 """, cancellationToken).ConfigureAwait(false);
 
@@ -127,7 +132,9 @@ public sealed class SqliteTranscriptStore
         // rows prevents renamed/merged/deleted speakers and segments from leaving
         // stale records behind in the database.
         await ExecuteAsync(connection, transaction,
-            "DELETE FROM segments WHERE session_id = $sessionId; DELETE FROM speakers WHERE session_id = $sessionId;",
+            "DELETE FROM segments WHERE session_id = $sessionId; " +
+            "DELETE FROM speakers WHERE session_id = $sessionId; " +
+            "DELETE FROM audio_tracks WHERE session_id = $sessionId;",
             cancellationToken, ("$sessionId", sessionId)).ConfigureAwait(false);
 
         foreach (var speaker in document.Speakers)
@@ -170,6 +177,31 @@ public sealed class SqliteTranscriptStore
                 ("$isProvisional", segment.IsProvisional ? 1 : 0)).ConfigureAwait(false);
         }
 
+        foreach (var track in document.AudioTracks)
+        {
+            if (string.IsNullOrWhiteSpace(track.Path) || string.IsNullOrWhiteSpace(track.SourceId))
+            {
+                throw new InvalidOperationException($"Audio track '{track.Id}' has an empty path or source id.");
+            }
+
+            await ExecuteAsync(connection, transaction, """
+                INSERT INTO audio_tracks (
+                    session_id, id, path, source_id, source_kind,
+                    timeline_offset_ms, duration_ms)
+                VALUES (
+                    $sessionId, $id, $path, $sourceId, $sourceKind,
+                    $timelineOffsetMs, $durationMs);
+                """, cancellationToken,
+                ("$sessionId", sessionId),
+                ("$id", track.Id.ToString()),
+                ("$path", ToStoredTrackPath(track.Path)),
+                ("$sourceId", track.SourceId),
+                ("$sourceKind", track.SourceKind.ToString()),
+                ("$timelineOffsetMs", (long)track.TimelineOffset.TotalMilliseconds),
+                ("$durationMs", track.Duration is null ? null : (long)track.Duration.Value.TotalMilliseconds))
+                .ConfigureAwait(false);
+        }
+
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -187,31 +219,47 @@ public sealed class SqliteTranscriptStore
                    s.created_at,
                    COUNT(DISTINCT p.id) AS speaker_count,
                    COUNT(DISTINCT g.id) AS segment_count,
-                   COALESCE(MAX(g.end_ms), 0) AS duration_ms
+                   COALESCE(MAX(g.end_ms), 0) AS duration_ms,
+                   COUNT(DISTINCT a.id) AS audio_track_count
             FROM sessions s
             LEFT JOIN speakers p ON p.session_id = s.id
             LEFT JOIN segments g ON g.session_id = s.id
+            LEFT JOIN audio_tracks a ON a.session_id = s.id
             GROUP BY s.id, s.title, s.created_at
             ORDER BY s.created_at DESC;
             """;
 
         var result = new List<StoredSessionSummary>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
         {
-            if (!Guid.TryParse(reader.GetString(0), out var id) ||
-                !DateTimeOffset.TryParse(reader.GetString(2), out var createdAt))
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
-                continue;
-            }
+                if (!Guid.TryParse(reader.GetString(0), out var id) ||
+                    !DateTimeOffset.TryParse(reader.GetString(2), out var createdAt))
+                {
+                    continue;
+                }
 
-            result.Add(new StoredSessionSummary(
-                id,
-                reader.GetString(1),
-                createdAt,
-                Convert.ToInt32(reader.GetInt64(3)),
-                Convert.ToInt32(reader.GetInt64(4)),
-                TimeSpan.FromMilliseconds(reader.GetInt64(5))));
+                result.Add(new StoredSessionSummary(
+                    id,
+                    reader.GetString(1),
+                    createdAt,
+                    Convert.ToInt32(reader.GetInt64(3)),
+                    Convert.ToInt32(reader.GetInt64(4)),
+                    TimeSpan.FromMilliseconds(reader.GetInt64(5)),
+                    Convert.ToInt32(reader.GetInt64(6)),
+                    0));
+            }
+        }
+
+        for (var index = 0; index < result.Count; index++)
+        {
+            var tracks = await LoadAudioTracksAsync(connection, result[index].SessionId, cancellationToken)
+                .ConfigureAwait(false);
+            result[index] = result[index] with
+            {
+                MissingAudioTrackCount = tracks.Count(track => !File.Exists(track.Path))
+            };
         }
 
         return result;
@@ -300,6 +348,9 @@ public sealed class SqliteTranscriptStore
             }
         }
 
+        document.AudioTracks.AddRange(
+            await LoadAudioTracksAsync(connection, sessionId, cancellationToken).ConfigureAwait(false));
+
         return document;
     }
 
@@ -317,6 +368,36 @@ public sealed class SqliteTranscriptStore
 
     private SqliteConnection CreateConnection()
         => new($"Data Source={_databasePath}");
+
+    private string ToStoredTrackPath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var databaseDirectory = Path.GetDirectoryName(Path.GetFullPath(_databasePath)) ?? ".";
+        var relativePath = Path.GetRelativePath(databaseDirectory, fullPath);
+        return Path.IsPathRooted(relativePath) || relativePath.Length >= fullPath.Length
+            ? fullPath
+            : relativePath;
+    }
+
+    private string ResolveStoredTrackPath(string path)
+    {
+        try
+        {
+            if (Path.IsPathRooted(path))
+            {
+                return Path.GetFullPath(path);
+            }
+
+            var databaseDirectory = Path.GetDirectoryName(Path.GetFullPath(_databasePath)) ?? ".";
+            return Path.GetFullPath(Path.Combine(databaseDirectory, path));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            // Preserve a corrupted legacy value so history can report it as
+            // missing instead of failing to open the entire session list.
+            return path;
+        }
+    }
 
     private static async Task EnableForeignKeysAsync(
         SqliteConnection connection,
@@ -399,6 +480,24 @@ public sealed class SqliteTranscriptStore
             );
             """, cancellationToken);
 
+    private static Task CreateAudioTrackTableAsync(
+        SqliteConnection connection,
+        DbTransaction transaction,
+        CancellationToken cancellationToken)
+        => ExecuteAsync(connection, transaction, """
+            CREATE TABLE IF NOT EXISTS audio_tracks (
+                session_id TEXT NOT NULL,
+                id TEXT NOT NULL,
+                path TEXT NOT NULL,
+                source_id TEXT NOT NULL,
+                source_kind TEXT NOT NULL,
+                timeline_offset_ms INTEGER NOT NULL,
+                duration_ms INTEGER NULL,
+                PRIMARY KEY (session_id, id),
+                FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+            );
+            """, cancellationToken);
+
     private static async Task MigrateLegacySpeakerTableAsync(
         SqliteConnection connection,
         DbTransaction transaction,
@@ -447,6 +546,42 @@ public sealed class SqliteTranscriptStore
             FROM segments
             GROUP BY session_id, speaker_id;
             """, cancellationToken);
+
+    private async Task<IReadOnlyList<SessionAudioTrack>> LoadAudioTracksAsync(
+        SqliteConnection connection,
+        Guid sessionId,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id, path, source_id, source_kind, timeline_offset_ms, duration_ms
+            FROM audio_tracks
+            WHERE session_id = $sessionId
+            ORDER BY timeline_offset_ms, id;
+            """;
+        command.Parameters.AddWithValue("$sessionId", sessionId.ToString());
+
+        var tracks = new List<SessionAudioTrack>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            if (!Guid.TryParse(reader.GetString(0), out var id) ||
+                !Enum.TryParse<AudioSourceKind>(reader.GetString(3), ignoreCase: true, out var sourceKind))
+            {
+                continue;
+            }
+
+            tracks.Add(new SessionAudioTrack(
+                id,
+                ResolveStoredTrackPath(reader.GetString(1)),
+                reader.GetString(2),
+                sourceKind,
+                TimeSpan.FromMilliseconds(reader.GetInt64(4)),
+                reader.IsDBNull(5) ? null : TimeSpan.FromMilliseconds(reader.GetInt64(5))));
+        }
+
+        return tracks;
+    }
 
     private static async Task ExecuteAsync(
         SqliteConnection connection,

@@ -180,44 +180,115 @@
                         <TextBlock Text="{Binding Document.Title}" FontFamily="Segoe UI Variable Display, Segoe UI, Microsoft YaHei UI" FontSize="28" FontWeight="SemiBold" Margin="0,5,0,0" />
                         <TextBlock Text="{Binding SessionSummary}" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,5,0,0" />
                     </StackPanel>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Top" Width="190">
-                        <Button Content="{Binding ExportLabel}" Command="{Binding ExportCommand}" HorizontalAlignment="Right" MinWidth="94" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Top" Width="230">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="StopPlaybackButton"
+                                    Command="{Binding StopPlaybackCommand}"
+                                    ToolTip="{Binding StopPlaybackLabel}"
+                                    Foreground="{StaticResource AccentBrush}"
+                                    Background="{StaticResource AccentSurfaceBrush}"
+                                    BorderBrush="#355A91"
+                                    Padding="10,6"
+                                    Margin="0,0,8,0"
+                                    Visibility="{Binding IsPlaybackActive, Converter={x:Static local:BoolToVisibilityConverter.Instance}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="9" Height="9" Background="{StaticResource AccentBrush}" CornerRadius="1" Margin="0,0,7,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding StopPlaybackLabel}" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Content="{Binding ExportLabel}" Command="{Binding ExportCommand}" MinWidth="94" />
+                        </StackPanel>
                         <TextBlock Text="{Binding SearchTranscriptLabel}" Style="{StaticResource EyebrowText}" Margin="0,11,0,5" />
                         <TextBox Text="{Binding SegmentSearchText, UpdateSourceTrigger=PropertyChanged}" />
                     </StackPanel>
                 </Grid>
 
                 <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="10">
-                    <ListBox ItemsSource="{Binding SegmentsView}" Padding="10,8">
+                    <ListBox x:Name="TranscriptSegmentsList"
+                             ItemsSource="{Binding SegmentsView}"
+                             Padding="10,8"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="8,6,8,4">
+                                <Grid Margin="8,7,8,4">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="54" />
-                                        <ColumnDefinition Width="4" />
+                                        <ColumnDefinition Width="112" />
+                                        <ColumnDefinition Width="18" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Start, StringFormat={}{0:mm\:ss}}" Foreground="{StaticResource SubtleBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="11" Margin="0,3,0,0" />
-                                    <Border Grid.Column="1" Background="{StaticResource AccentBrush}" CornerRadius="2" Margin="0,1,0,3" Opacity="0.7" />
-                                    <StackPanel Grid.Column="2" Margin="14,0,10,13">
+                                    <Button Grid.Column="0"
+                                            Command="{Binding DataContext.PlaySegmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip="{Binding DataContext.PlaySegmentLabel, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            AutomationProperties.AutomationId="SegmentPlayButton"
+                                            AutomationProperties.Name="{Binding DataContext.PlaySegmentLabel, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Style="{StaticResource SegmentPlaybackButton}"
+                                            VerticalAlignment="Top">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Border Grid.RowSpan="2"
+                                                    Width="22"
+                                                    Height="22"
+                                                    CornerRadius="11"
+                                                    Background="{StaticResource AccentBrush}"
+                                                    VerticalAlignment="Center">
+                                                <Path Data="M 8,6 L 8,16 16,11 Z"
+                                                      Fill="#08111F"
+                                                      Stretch="None"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center" />
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding DataContext.PlaySegmentActionLabel, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                       Foreground="{StaticResource AccentBrush}"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Margin="7,0,0,1" />
+                                            <TextBlock Grid.Row="1"
+                                                       Grid.Column="1"
+                                                       Text="{Binding Start, StringFormat={}{0:hh\:mm\:ss}}"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       FontFamily="Cascadia Mono, Consolas"
+                                                       FontSize="10"
+                                                       Margin="7,0,0,0" />
+                                        </Grid>
+                                    </Button>
+                                    <Border Grid.Column="1"
+                                            Width="1"
+                                            Background="{StaticResource LineStrongBrush}"
+                                            HorizontalAlignment="Center"
+                                            Margin="0,1,0,15" />
+                                    <StackPanel Grid.Column="2" Margin="0,0,10,15">
                                         <TextBlock Text="{Binding SpeakerName}" Foreground="{StaticResource AccentBrush}" FontSize="12" FontWeight="SemiBold" />
                                         <TextBox Text="{Binding Text, Mode=OneWay}"
+                                                 AutomationProperties.AutomationId="SegmentTextEditor"
                                                  TextWrapping="Wrap"
                                                  AcceptsReturn="True"
+                                                 HorizontalScrollBarVisibility="Disabled"
+                                                 VerticalScrollBarVisibility="Disabled"
                                                  Foreground="{StaticResource InkBrush}"
                                                  FontSize="14"
                                                  Background="Transparent"
                                                  BorderBrush="Transparent"
                                                  BorderThickness="0"
-                                                 Padding="0"
+                                                 Padding="0,1"
+                                                 MinHeight="28"
                                                  Margin="0,5,0,0"
                                                  LostKeyboardFocus="SegmentTextBox_LostKeyboardFocus"
                                                  KeyDown="SegmentTextBox_KeyDown" />
                                         <TextBlock Text="{Binding DataContext.SegmentEditHint, RelativeSource={RelativeSource AncestorType=Window}}"
                                                    Foreground="{StaticResource SubtleBrush}"
                                                    FontSize="10"
-                                                   Margin="0,5,0,0" />
-                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,6,0,0" />
+                                        <WrapPanel Margin="0,7,0,0">
                                             <Button Content="{Binding DataContext.MergePreviousLabel, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     Command="{Binding DataContext.MergePreviousSegmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"
@@ -233,7 +304,7 @@
                                                     MinHeight="23"
                                                     FontSize="10"
                                                     Margin="6,0,0,0" />
-                                        </StackPanel>
+                                        </WrapPanel>
                                     </StackPanel>
                                     <Border Grid.Column="0" Grid.ColumnSpan="3" VerticalAlignment="Bottom" Height="1" Background="{StaticResource LineBrush}" />
                                 </Grid>

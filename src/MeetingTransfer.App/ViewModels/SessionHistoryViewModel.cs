@@ -102,14 +102,21 @@ public sealed class SessionHistoryItemViewModel
             ? session.Duration.ToString(@"hh\:mm\:ss")
             : session.Duration.ToString(@"mm\:ss");
         Metadata = LocalizationManager.CurrentLanguage == "zh-CN"
-            ? $"{session.SegmentCount} 段  ·  {session.SpeakerCount} 位说话人  ·  {duration}"
-            : $"{session.SegmentCount} segments  ·  {session.SpeakerCount} speakers  ·  {duration}";
+            ? $"{session.SegmentCount} 段  ·  {session.SpeakerCount} 位说话人  ·  {session.AudioTrackCount} 条录音  ·  {duration}"
+            : $"{session.SegmentCount} segments  ·  {session.SpeakerCount} speakers  ·  {session.AudioTrackCount} recording(s)  ·  {duration}";
+        RecordingWarning = session.MissingAudioTrackCount == 0
+            ? string.Empty
+            : LocalizationManager.CurrentLanguage == "zh-CN"
+                ? $"缺少 {session.MissingAudioTrackCount} 个录音文件"
+                : $"{session.MissingAudioTrackCount} recording file(s) missing";
     }
 
     public Guid SessionId { get; }
     public string Title { get; }
     public string CreatedAtDisplay { get; }
     public string Metadata { get; }
+    public string RecordingWarning { get; }
+    public bool HasRecordingWarning => RecordingWarning.Length > 0;
     public bool IsCurrent { get; }
     public bool CanOpen => !IsCurrent;
     public bool CanDelete => !IsCurrent;

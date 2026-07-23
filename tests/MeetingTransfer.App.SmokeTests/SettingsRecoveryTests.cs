@@ -5,6 +5,7 @@ using MeetingTransfer.App.Diagnostics;
 using MeetingTransfer.App.ViewModels;
 using MeetingTransfer.Audio;
 using MeetingTransfer.Core.Audio;
+using NAudio.Wave;
 
 namespace MeetingTransfer.App.SmokeTests;
 
@@ -85,21 +86,35 @@ public sealed class SettingsRecoveryTests : IDisposable
     public void PcmSessionRecorder_PreservesTrackIdentityForOfflineRefinement()
     {
         var recordingDirectory = Path.Combine(_directory, "recordings");
-        using var recorder = new PcmSessionRecorder(recordingDirectory);
+        var recorder = new PcmSessionRecorder(recordingDirectory);
         recorder.Write(new PcmAudioChunk(
             "microphone-id",
             AudioSourceKind.Microphone,
             DateTimeOffset.UtcNow,
-            TimeSpan.Zero,
+            TimeSpan.FromSeconds(12),
             16000,
             1,
             new byte[320]));
+        recorder.Dispose();
 
         var track = Assert.Single(recorder.RecordedTracks);
         Assert.Equal("microphone-id", track.SourceId);
         Assert.Equal(AudioSourceKind.Microphone, track.SourceKind);
+        Assert.Equal(TimeSpan.FromSeconds(12), track.TimelineOffset);
+        Assert.NotNull(track.Duration);
         Assert.True(File.Exists(track.Path));
         Assert.True(new FileInfo(track.Path).Length > 44);
+
+        using var secondRecorder = new PcmSessionRecorder(recordingDirectory);
+        secondRecorder.Write(new PcmAudioChunk(
+            "microphone-id",
+            AudioSourceKind.Microphone,
+            DateTimeOffset.UtcNow,
+            TimeSpan.FromSeconds(20),
+            16000,
+            1,
+            new byte[320]));
+        Assert.NotEqual(track.Path, Assert.Single(secondRecorder.RecordedTracks).Path);
     }
 
     [Fact]
@@ -128,5 +143,33 @@ public sealed class SettingsRecoveryTests : IDisposable
 
         Assert.Null(error);
         Assert.Null(DiagnosticLog.Path);
+    }
+
+    [Fact]
+    public async Task AudioPlaybackService_PlaysAndStopsSilentWavWhenDeviceIsAvailable()
+    {
+        if (WaveOut.DeviceCount == 0)
+        {
+            return;
+        }
+
+        var wavPath = Path.Combine(_directory, "silent-playback.wav");
+        using (var writer = new WaveFileWriter(wavPath, new WaveFormat(16000, 16, 1)))
+        {
+            writer.Write(new byte[16000]);
+        }
+
+        using var playback = new AudioPlaybackService();
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        playback.PlaybackStopped += (_, _) => stopped.TrySetResult();
+
+        playback.Play(wavPath, TimeSpan.FromMilliseconds(100));
+
+        Assert.True(playback.IsPlaying);
+        Assert.Equal(wavPath, playback.CurrentPath);
+        playback.Stop();
+        await stopped.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.False(playback.IsPlaying);
+        Assert.Null(playback.CurrentPath);
     }
 }

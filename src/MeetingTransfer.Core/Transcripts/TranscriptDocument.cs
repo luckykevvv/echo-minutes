@@ -1,3 +1,5 @@
+using MeetingTransfer.Core.Audio;
+
 namespace MeetingTransfer.Core.Transcripts;
 
 public sealed class TranscriptDocument
@@ -7,6 +9,7 @@ public sealed class TranscriptDocument
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public List<Speaker> Speakers { get; } = [];
     public List<TranscriptSegment> Segments { get; } = [];
+    public List<SessionAudioTrack> AudioTracks { get; } = [];
 
     public Speaker EnsureSpeaker(string speakerId, string defaultName, bool isLocalUser = false)
     {

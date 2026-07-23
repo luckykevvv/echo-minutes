@@ -116,6 +116,12 @@
                                                    Foreground="{StaticResource SubtleBrush}"
                                                    FontSize="11"
                                                    Margin="0,6,0,0" />
+                                        <TextBlock Text="{Binding RecordingWarning}"
+                                                   Foreground="#EAA95E"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,6,0,0"
+                                                   Visibility="{Binding HasRecordingWarning, Converter={x:Static local:BoolToVisibilityConverter.Instance}}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                         <Button Content="{DynamicResource OpenSessionLabel}"

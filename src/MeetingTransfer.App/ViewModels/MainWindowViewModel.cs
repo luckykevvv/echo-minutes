@@ -27,6 +27,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private SherpaOnnxOptions _sherpaOptions;
     private readonly MediaImportService _mediaImportService = new();
     private readonly ModelCatalog _modelCatalog = new();
+    private readonly IAudioPlaybackService _audioPlaybackService;
     private SqliteTranscriptStore _store;
     private IAudioCaptureService? _audioCapture;
     private PcmSessionRecorder? _sessionRecorder;
@@ -51,10 +52,14 @@ public sealed class MainWindowViewModel : ObservableObject
     private bool _isShuttingDown;
     private bool _hasDefaultDocumentTitle = true;
     private bool _isDocumentPersisted;
+    private bool _isPlaybackActive;
+    private bool _suppressNextPlaybackStoppedStatus;
     private string _segmentSearchText = string.Empty;
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(IAudioPlaybackService? audioPlaybackService = null)
     {
+        _audioPlaybackService = audioPlaybackService ?? new AudioPlaybackService();
+        _audioPlaybackService.PlaybackStopped += AudioPlaybackService_PlaybackStopped;
         (_options, _sherpaOptions) = LoadOptions();
         _isChinese = LocalizationManager.Normalize(_options.Ui.Language) == "zh-CN";
         LocalizationManager.LanguageChanged += LocalizationManager_LanguageChanged;
@@ -98,6 +103,12 @@ public sealed class MainWindowViewModel : ObservableObject
         MergePreviousSegmentCommand = new RelayCommand(
             MergePreviousSegmentAsync,
             segment => segment is TranscriptSegment item && CanMergeWithPrevious(item) && !IsBusy && !IsRecording);
+        PlaySegmentCommand = new RelayCommand(
+            PlaySegmentAsync,
+            segment => segment is TranscriptSegment && !IsBusy && !IsRecording && !_isShuttingDown);
+        StopPlaybackCommand = new RelayCommand(
+            StopPlaybackAsync,
+            () => IsPlaybackActive && !_isShuttingDown);
 
         UpdateModelReadinessStatus();
         LoadAudioSources();
@@ -121,6 +132,8 @@ public sealed class MainWindowViewModel : ObservableObject
     public RelayCommand MergeSpeakerCommand { get; }
     public RelayCommand DeleteSegmentCommand { get; }
     public RelayCommand MergePreviousSegmentCommand { get; }
+    public RelayCommand PlaySegmentCommand { get; }
+    public RelayCommand StopPlaybackCommand { get; }
     public event EventHandler? SettingsRequested;
     public event EventHandler? HistoryRequested;
     public bool ShouldShowOnboarding => !_options.Ui.OnboardingCompleted;
@@ -164,7 +177,9 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
     public string StoragePath => $"{Text("数据库", "DB")}: {_options.Storage.DatabasePath}";
-    public string SessionSummary => Text($"{Segments.Count} 段，{Speakers.Count} 位说话人", $"{Segments.Count} segments, {Speakers.Count} speakers");
+    public string SessionSummary => Text(
+        $"{Segments.Count} 段，{Speakers.Count} 位说话人，{Document.AudioTracks.Count} 条录音",
+        $"{Segments.Count} segments, {Speakers.Count} speakers, {Document.AudioTracks.Count} recording(s)");
     public string ToggleLanguageLabel => _isChinese ? "EN" : "中文";
     public string WorkbenchLabel => Text("实时工作台", "Live Workbench");
     public string DevicesLabel => Text("输入设备", "Input Devices");
@@ -185,6 +200,9 @@ public sealed class MainWindowViewModel : ObservableObject
     public string SegmentEditHint => Text("直接编辑文本；Ctrl+Enter 在光标处拆分", "Edit text directly; Ctrl+Enter splits at the caret");
     public string MergePreviousLabel => Text("合并上一段", "Merge previous");
     public string DeleteSegmentLabel => Text("删除片段", "Delete segment");
+    public string PlaySegmentActionLabel => Text("播放", "Play");
+    public string PlaySegmentLabel => Text("从此处播放录音", "Play recording from here");
+    public string StopPlaybackLabel => Text("停止播放", "Stop playback");
     public string SpeakersLabel => Text("说话人", "Speakers");
     public string SpeakersHint => Text("直接编辑标签；Enter 保存，Esc 取消", "Edit labels inline; Enter saves, Esc cancels");
     public string NoSpeakersTitle => Text("尚未识别到说话人", "No speakers yet");
@@ -193,6 +211,17 @@ public sealed class MainWindowViewModel : ObservableObject
     public string SessionLabel => Text("会话", "Session");
     public bool HasSpeakers => Speakers.Count > 0;
     public bool HasNoSpeakers => !HasSpeakers;
+    public bool IsPlaybackActive
+    {
+        get => _isPlaybackActive;
+        private set
+        {
+            if (SetProperty(ref _isPlaybackActive, value))
+            {
+                StopPlaybackCommand?.RaiseCanExecuteChanged();
+            }
+        }
+    }
     public string ProgressLabel => IsRecording
         ? Text("实时转写中", "Recording live")
         : IsBusy
@@ -279,6 +308,18 @@ public sealed class MainWindowViewModel : ObservableObject
         set => SetProperty(ref _operationProgress, value);
     }
 
+    public bool CanCancelOperation
+    {
+        get => _canCancelOperation;
+        private set
+        {
+            if (SetProperty(ref _canCancelOperation, value))
+            {
+                CancelOperationCommand?.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
     public SpeakerCountOption? SelectedSpeakerCount
     {
         get => _selectedSpeakerCount;
@@ -333,6 +374,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
         try
         {
+            StopPlayback();
             await StopInternalAsync(false).ConfigureAwait(true);
             // StopInternal resets progress state. Mark this operation busy only
             // after cleanup so import/settings/history stay disabled while the
@@ -364,6 +406,7 @@ public sealed class MainWindowViewModel : ObservableObject
                 }
             };
 
+            var timelineOffset = GetNextTimelineOffset();
             var recordingDirectory = Path.Combine(
                 _options.Storage.RecordingsDirectory,
                 Document.SessionId.ToString("N"));
@@ -377,7 +420,8 @@ public sealed class MainWindowViewModel : ObservableObject
                 SelectedMicrophoneSource?.Id,
                 _options.Audio.SampleRate,
                 _options.Audio.Channels,
-                _options.Audio.ChunkMilliseconds), _recordingCts.Token).ConfigureAwait(true);
+                _options.Audio.ChunkMilliseconds,
+                timelineOffset), _recordingCts.Token).ConfigureAwait(true);
 
             IsBusy = false;
             IsRecording = true;
@@ -424,16 +468,22 @@ public sealed class MainWindowViewModel : ObservableObject
                 BeginProgress(Text("正在停止并保存...", "Stopping and saving..."), true, 25);
             }
 
-            var recordedTracks = _sessionRecorder?.RecordedTracks ?? [];
-            _recordingCts?.Cancel();
-            _sessionRecorder?.Dispose();
+            IReadOnlyList<SessionAudioTrack> recordedTracks = [];
+            var recorder = _sessionRecorder;
             _sessionRecorder = null;
+            _recordingCts?.Cancel();
 
             if (_audioCapture is not null)
             {
                 await _audioCapture.StopAsync(CancellationToken.None).ConfigureAwait(true);
                 await _audioCapture.DisposeAsync().ConfigureAwait(true);
                 _audioCapture = null;
+            }
+
+            if (recorder is not null)
+            {
+                recorder.Dispose();
+                recordedTracks = recorder.RecordedTracks;
             }
 
             if (_pipeline is not null)
@@ -451,7 +501,19 @@ public sealed class MainWindowViewModel : ObservableObject
 
             _recordingCts?.Dispose();
             _recordingCts = null;
-            if (_isDocumentPersisted || Document.Segments.Count > 0 || Document.Speakers.Count > 0)
+            foreach (var track in recordedTracks)
+            {
+                if (Document.AudioTracks.All(existing => existing.Id != track.Id))
+                {
+                    Document.AudioTracks.Add(track);
+                }
+            }
+            OnPropertyChanged(nameof(SessionSummary));
+
+            if (_isDocumentPersisted ||
+                Document.Segments.Count > 0 ||
+                Document.Speakers.Count > 0 ||
+                Document.AudioTracks.Count > 0)
             {
                 await _store.SaveAsync(Document).ConfigureAwait(true);
                 _isDocumentPersisted = true;
@@ -512,6 +574,91 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             _stopGate.Release();
         }
+    }
+
+    private async Task RefineRecordedSessionAsync(
+        IReadOnlyList<SessionAudioTrack> tracks,
+        CancellationToken cancellationToken)
+    {
+        var usableTracks = tracks
+            .Where(track => File.Exists(track.Path) && new FileInfo(track.Path).Length > 44)
+            .ToArray();
+        if (usableTracks.Length == 0)
+        {
+            return;
+        }
+
+        await using var engine = CreateSpeechEngine();
+        await engine.InitializeAsync(cancellationToken).ConfigureAwait(true);
+        var refinedSegments = new List<TranscriptSegment>();
+        for (var index = 0; index < usableTracks.Length; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var track = usableTracks[index];
+            var trackStart = index / (double)usableTracks.Length * 90;
+            var trackShare = 90d / usableTracks.Length;
+            var progress = new Progress<TranscriptionProgress>(item =>
+            {
+                var mapped = Math.Clamp(MapImportProgress(item), 0, 100);
+                SetProgress(
+                    Text(
+                        $"正在精修音轨 {index + 1}/{usableTracks.Length}…",
+                        $"Refining track {index + 1}/{usableTracks.Length}…"),
+                    false,
+                    Math.Min(95, 5 + trackStart + mapped / 100d * trackShare));
+            });
+            var segments = await engine.TranscribeFileAsync(
+                track.Path,
+                track.SourceId,
+                progress,
+                cancellationToken).ConfigureAwait(true);
+            foreach (var segment in segments)
+            {
+                var isMicrophone = track.SourceKind == AudioSourceKind.Microphone;
+                refinedSegments.Add(new TranscriptSegment
+                {
+                    SpeakerId = isMicrophone ? "local-user" : segment.SpeakerId,
+                    SpeakerName = isMicrophone ? Text("我", "Me") : LocalizeDefaultSpeakerName(segment.SpeakerName),
+                    SourceId = track.SourceId,
+                    SourceKind = track.SourceKind,
+                    Start = track.TimelineOffset + segment.Start,
+                    End = track.TimelineOffset + segment.End,
+                    Text = segment.Text,
+                    Confidence = segment.Confidence,
+                    IsProvisional = false
+                });
+            }
+        }
+
+        if (refinedSegments.Count == 0)
+        {
+            throw new InvalidOperationException(Text(
+                "离线模型没有返回可用文本。",
+                "The offline model returned no usable transcript."));
+        }
+
+        var refinedDocument = new TranscriptDocument
+        {
+            SessionId = Document.SessionId,
+            Title = Document.Title,
+            CreatedAt = Document.CreatedAt
+        };
+        refinedDocument.AudioTracks.AddRange(Document.AudioTracks);
+        foreach (var segment in refinedSegments.OrderBy(item => item.Start))
+        {
+            refinedDocument.EnsureSpeaker(
+                segment.SpeakerId,
+                segment.SpeakerName,
+                segment.SourceKind == AudioSourceKind.Microphone);
+            refinedDocument.Segments.Add(segment);
+        }
+
+        SetProgress(Text("正在保存高质量最终稿…", "Saving the high-quality final transcript…"), false, 98);
+        // Keep the live draft visible and in memory until the refined document
+        // has been committed successfully. A cancellation or storage failure
+        // therefore cannot leave the UI showing an unsaved half-transition.
+        await _store.SaveAsync(refinedDocument, cancellationToken).ConfigureAwait(true);
+        ReplaceDocument(refinedDocument, hasDefaultTitle: _hasDefaultDocumentTitle, isPersisted: true);
     }
 
     private async Task ImportAsync()
@@ -618,6 +765,13 @@ public sealed class MainWindowViewModel : ObservableObject
             };
             _hasDefaultDocumentTitle = false;
             _isDocumentPersisted = false;
+            Document.AudioTracks.Add(new SessionAudioTrack(
+                Guid.NewGuid(),
+                wavPath,
+                Path.GetFileName(dialog.FileName),
+                AudioSourceKind.ImportedFile,
+                TimeSpan.Zero,
+                segments.Count == 0 ? null : segments.Max(segment => segment.End)));
             RefreshCollections();
             foreach (var segment in segments)
             {
@@ -648,6 +802,33 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
+    private void ReportRealtimeFailure(Exception exception)
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (now - _lastRealtimeErrorAt < TimeSpan.FromSeconds(10))
+        {
+            return;
+        }
+
+        _lastRealtimeErrorAt = now;
+        DiagnosticLog.Error("Realtime transcription failure.", exception);
+        _ = Application.Current.Dispatcher.BeginInvoke(() =>
+            StatusMessage = $"{Text("实时识别暂时失败", "Realtime recognition temporarily failed")}: {exception.Message}");
+    }
+
+    private Task CancelOperationAsync()
+    {
+        if (_operationCts is null || _operationCts.IsCancellationRequested)
+        {
+            return Task.CompletedTask;
+        }
+
+        StatusMessage = Text("正在取消当前任务…", "Cancelling the current task…");
+        _operationCts.Cancel();
+        CanCancelOperation = false;
+        return Task.CompletedTask;
+    }
+
     private async Task ExportAsync()
     {
         try
@@ -672,6 +853,114 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
+    private Task PlaySegmentAsync(object? parameter)
+    {
+        if (parameter is not TranscriptSegment segment)
+        {
+            return Task.CompletedTask;
+        }
+
+        var track = SessionAudioTrackResolver.Resolve(Document.AudioTracks, segment);
+        if (track is null)
+        {
+            StopPlayback();
+            StatusMessage = Text(
+                "这个片段没有可关联的录音轨道；旧会话可能只保存了转写。",
+                "This segment has no linked recording; older sessions may contain transcript data only.");
+            return Task.CompletedTask;
+        }
+
+        if (!File.Exists(track.Path))
+        {
+            StopPlayback();
+            DiagnosticLog.Info($"Missing recording for session {Document.SessionId:N}: {track.Path}");
+            StatusMessage = Text(
+                $"找不到录音文件：{Path.GetFileName(track.Path)}。文件可能已被移动或删除。",
+                $"Recording not found: {Path.GetFileName(track.Path)}. It may have been moved or deleted.");
+            return Task.CompletedTask;
+        }
+
+        try
+        {
+            StopPlayback();
+            _suppressNextPlaybackStoppedStatus = false;
+            var position = SessionAudioTrackResolver.GetSeekPosition(track, segment);
+            _audioPlaybackService.Play(track.Path, position);
+            IsPlaybackActive = true;
+            StatusMessage = Text(
+                $"正在播放 {Path.GetFileName(track.Path)} · {position:mm\\:ss}",
+                $"Playing {Path.GetFileName(track.Path)} · {position:mm\\:ss}");
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLog.Error("Recording playback failed.", ex);
+            IsPlaybackActive = false;
+            StatusMessage = $"{Text("录音播放失败", "Recording playback failed")}: {ex.Message}";
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task StopPlaybackAsync()
+    {
+        StopPlayback(updateStatus: true);
+        return Task.CompletedTask;
+    }
+
+    private void StopPlayback(bool updateStatus = false)
+    {
+        if (!IsPlaybackActive && !_audioPlaybackService.IsPlaying)
+        {
+            return;
+        }
+
+        _suppressNextPlaybackStoppedStatus = !updateStatus;
+        IsPlaybackActive = false;
+        try
+        {
+            _audioPlaybackService.Stop();
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLog.Error("Could not stop recording playback cleanly.", ex);
+        }
+
+        if (updateStatus)
+        {
+            StatusMessage = Text("已停止播放。", "Playback stopped.");
+        }
+    }
+
+    private void AudioPlaybackService_PlaybackStopped(object? sender, AudioPlaybackStoppedEventArgs e)
+    {
+        var suppressStatus = _suppressNextPlaybackStoppedStatus;
+        _suppressNextPlaybackStoppedStatus = false;
+
+        void ApplyStoppedState()
+        {
+            IsPlaybackActive = false;
+            if (e.Exception is not null)
+            {
+                DiagnosticLog.Error("Recording playback stopped with an error.", e.Exception);
+                StatusMessage = $"{Text("录音播放失败", "Recording playback failed")}: {e.Exception.Message}";
+            }
+            else if (!suppressStatus)
+            {
+                StatusMessage = Text("录音播放结束。", "Recording playback finished.");
+            }
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.BeginInvoke(ApplyStoppedState);
+        }
+        else
+        {
+            ApplyStoppedState();
+        }
+    }
+
     public bool CommitSpeakerName(string speakerId, string name)
     {
         var speaker = Document.Speakers.FirstOrDefault(item =>
@@ -692,90 +981,6 @@ public sealed class MainWindowViewModel : ObservableObject
         return true;
     }
 
-    private async Task RefineRecordedSessionAsync(
-        IReadOnlyList<RecordedAudioTrack> tracks,
-        CancellationToken cancellationToken)
-    {
-        var usableTracks = tracks
-            .Where(track => File.Exists(track.Path) && new FileInfo(track.Path).Length > 44)
-            .ToArray();
-        if (usableTracks.Length == 0)
-        {
-            return;
-        }
-
-        await using var engine = CreateSpeechEngine();
-        await engine.InitializeAsync(cancellationToken).ConfigureAwait(true);
-        var refinedSegments = new List<TranscriptSegment>();
-        for (var index = 0; index < usableTracks.Length; index++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var track = usableTracks[index];
-            var trackStart = index / (double)usableTracks.Length * 90;
-            var trackShare = 90d / usableTracks.Length;
-            var progress = new Progress<TranscriptionProgress>(item =>
-            {
-                var mapped = Math.Clamp(MapImportProgress(item), 0, 100);
-                SetProgress(
-                    Text(
-                        $"正在精修音轨 {index + 1}/{usableTracks.Length}…",
-                        $"Refining track {index + 1}/{usableTracks.Length}…"),
-                    false,
-                    Math.Min(95, 5 + trackStart + mapped / 100d * trackShare));
-            });
-            var segments = await engine.TranscribeFileAsync(
-                track.Path,
-                track.SourceId,
-                progress,
-                cancellationToken).ConfigureAwait(true);
-            foreach (var segment in segments)
-            {
-                var isMicrophone = track.SourceKind == AudioSourceKind.Microphone;
-                refinedSegments.Add(new TranscriptSegment
-                {
-                    SpeakerId = isMicrophone ? "local-user" : segment.SpeakerId,
-                    SpeakerName = isMicrophone ? Text("我", "Me") : LocalizeDefaultSpeakerName(segment.SpeakerName),
-                    SourceId = track.SourceId,
-                    SourceKind = track.SourceKind,
-                    Start = segment.Start,
-                    End = segment.End,
-                    Text = segment.Text,
-                    Confidence = segment.Confidence,
-                    IsProvisional = false
-                });
-            }
-        }
-
-        if (refinedSegments.Count == 0)
-        {
-            throw new InvalidOperationException(Text(
-                "离线模型没有返回可用文本。",
-                "The offline model returned no usable transcript."));
-        }
-
-        var refinedDocument = new TranscriptDocument
-        {
-            SessionId = Document.SessionId,
-            Title = Document.Title,
-            CreatedAt = Document.CreatedAt
-        };
-        foreach (var segment in refinedSegments.OrderBy(item => item.Start))
-        {
-            refinedDocument.EnsureSpeaker(
-                segment.SpeakerId,
-                segment.SpeakerName,
-                segment.SourceKind == AudioSourceKind.Microphone);
-            refinedDocument.Segments.Add(segment);
-        }
-
-        SetProgress(Text("正在保存高质量最终稿…", "Saving the high-quality final transcript…"), false, 98);
-        // Keep the live draft visible and in memory until the refined document
-        // has been committed successfully. A cancellation or storage failure
-        // therefore cannot leave the UI showing an unsaved half-transition.
-        await _store.SaveAsync(refinedDocument, cancellationToken).ConfigureAwait(true);
-        ReplaceDocument(refinedDocument, hasDefaultTitle: _hasDefaultDocumentTitle, isPersisted: true);
-    }
-
     public bool CommitSegmentText(Guid segmentId, string text)
     {
         var segment = Document.Segments.FirstOrDefault(item => item.Id == segmentId);
@@ -792,6 +997,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public bool SplitSegment(Guid segmentId, int characterIndex)
     {
+        StopPlayback();
         var segment = Document.Segments.FirstOrDefault(item => item.Id == segmentId);
         if (segment is null || characterIndex <= 0 || characterIndex >= segment.Text.Length)
         {
@@ -819,6 +1025,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private Task DeleteSegmentAsync(object? parameter)
     {
+        StopPlayback();
         if (parameter is not TranscriptSegment segment || !Document.Segments.Remove(segment))
         {
             return Task.CompletedTask;
@@ -831,6 +1038,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private Task MergePreviousSegmentAsync(object? parameter)
     {
+        StopPlayback();
         if (parameter is not TranscriptSegment segment)
         {
             return Task.CompletedTask;
@@ -972,45 +1180,6 @@ public sealed class MainWindowViewModel : ObservableObject
         return Task.CompletedTask;
     }
 
-    private void ReportRealtimeFailure(Exception exception)
-    {
-        var now = DateTimeOffset.UtcNow;
-        if (now - _lastRealtimeErrorAt < TimeSpan.FromSeconds(10))
-        {
-            return;
-        }
-
-        _lastRealtimeErrorAt = now;
-        DiagnosticLog.Error("Realtime transcription failure.", exception);
-        _ = Application.Current.Dispatcher.BeginInvoke(() =>
-            StatusMessage = $"{Text("实时识别暂时失败", "Realtime recognition temporarily failed")}: {exception.Message}");
-    }
-
-    public bool CanCancelOperation
-    {
-        get => _canCancelOperation;
-        private set
-        {
-            if (SetProperty(ref _canCancelOperation, value))
-            {
-                CancelOperationCommand?.RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    private Task CancelOperationAsync()
-    {
-        if (_operationCts is null || _operationCts.IsCancellationRequested)
-        {
-            return Task.CompletedTask;
-        }
-
-        StatusMessage = Text("正在取消当前任务…", "Cancelling the current task…");
-        _operationCts.Cancel();
-        CanCancelOperation = false;
-        return Task.CompletedTask;
-    }
-
     private Task OpenHistoryAsync()
     {
         HistoryRequested?.Invoke(this, EventArgs.Empty);
@@ -1042,7 +1211,9 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private async Task PersistCurrentSessionIfNeededAsync(CancellationToken cancellationToken)
     {
-        if (Document.Segments.Count > 0 || Document.Speakers.Count > 0)
+        if (Document.Segments.Count > 0 ||
+            Document.Speakers.Count > 0 ||
+            Document.AudioTracks.Count > 0)
         {
             await _store.SaveAsync(Document, cancellationToken).ConfigureAwait(true);
             _isDocumentPersisted = true;
@@ -1062,6 +1233,7 @@ public sealed class MainWindowViewModel : ObservableObject
         bool hasDefaultTitle,
         bool isPersisted)
     {
+        StopPlayback();
         Document = document;
         _hasDefaultDocumentTitle = hasDefaultTitle;
         _isDocumentPersisted = isPersisted;
@@ -1194,6 +1366,9 @@ public sealed class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(SegmentEditHint));
         OnPropertyChanged(nameof(MergePreviousLabel));
         OnPropertyChanged(nameof(DeleteSegmentLabel));
+        OnPropertyChanged(nameof(PlaySegmentActionLabel));
+        OnPropertyChanged(nameof(PlaySegmentLabel));
+        OnPropertyChanged(nameof(StopPlaybackLabel));
         OnPropertyChanged(nameof(SpeakersLabel));
         OnPropertyChanged(nameof(SpeakersHint));
         OnPropertyChanged(nameof(NoSpeakersTitle));
@@ -1301,9 +1476,18 @@ public sealed class MainWindowViewModel : ObservableObject
 
         _isShuttingDown = true;
         LocalizationManager.LanguageChanged -= LocalizationManager_LanguageChanged;
+        _audioPlaybackService.PlaybackStopped -= AudioPlaybackService_PlaybackStopped;
+        StopPlayback();
         RaiseOperationCanExecuteChanged();
         _operationCts?.Cancel();
-        await StopInternalAsync(false).ConfigureAwait(true);
+        try
+        {
+            await StopInternalAsync(false).ConfigureAwait(true);
+        }
+        finally
+        {
+            _audioPlaybackService.Dispose();
+        }
     }
 
     private void RaiseOperationCanExecuteChanged()
@@ -1315,6 +1499,21 @@ public sealed class MainWindowViewModel : ObservableObject
         ExportCommand?.RaiseCanExecuteChanged();
         HistoryCommand?.RaiseCanExecuteChanged();
         SettingsCommand?.RaiseCanExecuteChanged();
+        PlaySegmentCommand?.RaiseCanExecuteChanged();
+        StopPlaybackCommand?.RaiseCanExecuteChanged();
+    }
+
+    private TimeSpan GetNextTimelineOffset()
+    {
+        var segmentEnd = Document.Segments.Count == 0
+            ? TimeSpan.Zero
+            : Document.Segments.Max(segment => segment.End);
+        var audioEnd = Document.AudioTracks
+            .Where(track => track.Duration is not null)
+            .Select(track => track.TimelineOffset + track.Duration!.Value)
+            .DefaultIfEmpty(TimeSpan.Zero)
+            .Max();
+        return segmentEnd > audioEnd ? segmentEnd : audioEnd;
     }
 
     private bool HasRealtimeModel()

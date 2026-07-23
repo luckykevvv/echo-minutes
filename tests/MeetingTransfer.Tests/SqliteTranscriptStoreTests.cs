@@ -83,6 +83,51 @@ public sealed class SqliteTranscriptStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveAsync_PersistsReplacesAndDiagnosesAudioTracks()
+    {
+        var databasePath = Path.Combine(_directory, "tracks.sqlite");
+        var recordingPath = Path.Combine(_directory, "recording.wav");
+        await File.WriteAllBytesAsync(recordingPath, [1, 2, 3]);
+        var store = new SqliteTranscriptStore(databasePath);
+        var document = CreateDocument("With recording", "speaker-1", "Alice", "Hello");
+        var track = new SessionAudioTrack(
+            Guid.NewGuid(),
+            recordingPath,
+            "sample.wav",
+            AudioSourceKind.ImportedFile,
+            TimeSpan.FromSeconds(4),
+            TimeSpan.FromSeconds(12));
+        document.AudioTracks.Add(track);
+
+        await store.SaveAsync(document);
+
+        var loaded = await store.LoadAsync(document.SessionId);
+        var loadedTrack = Assert.Single(loaded!.AudioTracks);
+        Assert.Equal(track.Id, loadedTrack.Id);
+        Assert.Equal(Path.GetFullPath(recordingPath), loadedTrack.Path);
+        Assert.Equal(TimeSpan.FromSeconds(4), loadedTrack.TimelineOffset);
+        Assert.Equal(TimeSpan.FromSeconds(12), loadedTrack.Duration);
+        var summary = Assert.Single(await store.ListSessionsAsync());
+        Assert.Equal(1, summary.AudioTrackCount);
+        Assert.Equal(0, summary.MissingAudioTrackCount);
+
+        File.Delete(recordingPath);
+        summary = Assert.Single(await store.ListSessionsAsync());
+        Assert.Equal(1, summary.MissingAudioTrackCount);
+
+        document.AudioTracks.Clear();
+        await store.SaveAsync(document);
+        Assert.Empty((await store.LoadAsync(document.SessionId))!.AudioTracks);
+        Assert.Equal(0, Assert.Single(await store.ListSessionsAsync()).AudioTrackCount);
+
+        await using var connection = new SqliteConnection($"Data Source={databasePath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT path FROM audio_tracks LIMIT 1;";
+        Assert.Null(await command.ExecuteScalarAsync());
+    }
+
+    [Fact]
     public async Task ListAndDelete_ManageStoredSessions()
     {
         var store = CreateStore();
@@ -107,6 +152,28 @@ public sealed class SqliteTranscriptStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task DeleteAsync_RemovesReferenceButPreservesRecordingFile()
+    {
+        var store = CreateStore();
+        var recordingPath = Path.Combine(_directory, "keep-me.wav");
+        await File.WriteAllBytesAsync(recordingPath, [1, 2, 3]);
+        var document = new TranscriptDocument { Title = "Recording only" };
+        document.AudioTracks.Add(new SessionAudioTrack(
+            Guid.NewGuid(),
+            recordingPath,
+            "microphone",
+            AudioSourceKind.Microphone,
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(1)));
+        await store.SaveAsync(document);
+
+        Assert.True(await store.DeleteAsync(document.SessionId));
+
+        Assert.True(File.Exists(recordingPath));
+        Assert.Null(await store.LoadAsync(document.SessionId));
+    }
+
+    [Fact]
     public async Task InitializeAsync_MigratesLegacyGlobalSpeakerPrimaryKey()
     {
         var databasePath = Path.Combine(_directory, "legacy.sqlite");
@@ -128,7 +195,36 @@ public sealed class SqliteTranscriptStoreTests : IDisposable
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
         command.CommandText = "PRAGMA user_version;";
-        Assert.Equal(2L, (long)(await command.ExecuteScalarAsync())!);
+        Assert.Equal(3L, (long)(await command.ExecuteScalarAsync())!);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_UpgradesV2DatabaseWithoutLosingTranscript()
+    {
+        var databasePath = Path.Combine(_directory, "v2.sqlite");
+        var originalStore = new SqliteTranscriptStore(databasePath);
+        var document = CreateDocument("V2 session", "speaker-1", "Alice", "Preserved");
+        await originalStore.SaveAsync(document);
+
+        await using (var connection = new SqliteConnection($"Data Source={databasePath}"))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "DROP TABLE audio_tracks; PRAGMA user_version = 2;";
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var upgradedStore = new SqliteTranscriptStore(databasePath);
+        await upgradedStore.InitializeAsync();
+
+        Assert.Equal("Preserved", Assert.Single((await upgradedStore.LoadAsync(document.SessionId))!.Segments).Text);
+        await using var upgradedConnection = new SqliteConnection($"Data Source={databasePath}");
+        await upgradedConnection.OpenAsync();
+        await using var versionCommand = upgradedConnection.CreateCommand();
+        versionCommand.CommandText = "PRAGMA user_version;";
+        Assert.Equal(3L, (long)(await versionCommand.ExecuteScalarAsync())!);
+        versionCommand.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='audio_tracks';";
+        Assert.Equal(1L, (long)(await versionCommand.ExecuteScalarAsync())!);
     }
 
     [Fact]

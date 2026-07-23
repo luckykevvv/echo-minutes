@@ -7,4 +7,5 @@ public sealed record AudioCaptureRequest(
     string? MicrophoneDeviceId,
     int TargetSampleRate,
     int TargetChannels,
-    int ChunkMilliseconds);
+    int ChunkMilliseconds,
+    TimeSpan TimelineOffset = default);

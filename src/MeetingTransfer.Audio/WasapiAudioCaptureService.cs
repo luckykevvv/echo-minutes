@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MeetingTransfer.Core.Audio;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
@@ -7,7 +8,7 @@ namespace MeetingTransfer.Audio;
 public sealed class WasapiAudioCaptureService : IAudioCaptureService
 {
     private readonly List<WasapiCapture> _captures = [];
-    private readonly DateTimeOffset _createdAt = DateTimeOffset.UtcNow;
+    private readonly Stopwatch _sessionClock = new();
     private AudioCaptureRequest? _request;
 
     public event EventHandler<PcmAudioChunk>? ChunkReady;
@@ -33,6 +34,7 @@ public sealed class WasapiAudioCaptureService : IAudioCaptureService
     public Task StartAsync(AudioCaptureRequest request, CancellationToken cancellationToken)
     {
         _request = request;
+        _sessionClock.Restart();
         using var enumerator = new MMDeviceEnumerator();
 
         if (request.CaptureSystemAudio)
@@ -101,11 +103,12 @@ public sealed class WasapiAudioCaptureService : IAudioCaptureService
                 capture.WaveFormat,
                 request.TargetSampleRate);
 
+            var capturedAt = DateTimeOffset.UtcNow;
             ChunkReady?.Invoke(this, new PcmAudioChunk(
                 sourceId,
                 sourceKind,
-                DateTimeOffset.UtcNow,
-                DateTimeOffset.UtcNow - _createdAt,
+                capturedAt,
+                request.TimelineOffset + _sessionClock.Elapsed,
                 request.TargetSampleRate,
                 1,
                 pcm));

@@ -1,12 +1,15 @@
 using System.IO;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
 using MeetingTransfer.App.Configuration;
 using MeetingTransfer.App.Localization;
 using MeetingTransfer.App.Updates;
 using MeetingTransfer.App.ViewModels;
+using MeetingTransfer.Audio;
+using MeetingTransfer.Core.Audio;
 using MeetingTransfer.Core.Models;
 using MeetingTransfer.Core.Transcripts;
 using MeetingTransfer.Core.Updates;
@@ -166,7 +169,8 @@ public sealed class OnboardingRenderSmokeTests
                 updateWindow.Arrange(new Rect(0, 0, 620, 520));
                 updateWindow.UpdateLayout();
 
-                var mainWindow = new MainWindow();
+                var playbackService = new FakeAudioPlaybackService();
+                var mainWindow = new MainWindow(playbackService);
                 var mainViewModel = Assert.IsType<MainWindowViewModel>(mainWindow.DataContext);
                 var buildVersionText = Assert.IsType<TextBlock>(mainWindow.FindName("BuildVersionText"));
                 Assert.Equal(UpdateCoordinator.CurrentVersionText, buildVersionText.Text);
@@ -238,16 +242,68 @@ public sealed class OnboardingRenderSmokeTests
                 {
                     SpeakerId = firstSpeaker.Id,
                     SpeakerName = firstSpeaker.Name,
-                    Text = "First segment"
+                    Start = new TimeSpan(1, 2, 3),
+                    End = new TimeSpan(1, 2, 18),
+                    Text = "A deliberately long transcript line verifies that the editor grows vertically at the minimum window width instead of hiding text behind the playback control or segment actions."
                 };
                 mainViewModel.Document.Segments.Add(firstSegment);
+                var playbackPath = Path.Combine(temporaryDirectory, "playback.wav");
+                File.WriteAllBytes(playbackPath, [1, 2, 3]);
+                mainViewModel.Document.AudioTracks.Add(new SessionAudioTrack(
+                    Guid.NewGuid(),
+                    playbackPath,
+                    firstSegment.SourceId,
+                    firstSegment.SourceKind,
+                    TimeSpan.Zero,
+                    TimeSpan.FromHours(2)));
                 RefreshMainCollections(mainViewModel);
-                mainWindow.Measure(new Size(1360, 860));
-                mainWindow.Arrange(new Rect(0, 0, 1360, 860));
+                mainWindow.Measure(new Size(1040, 680));
+                mainWindow.Arrange(new Rect(0, 0, 1040, 680));
                 mainWindow.UpdateLayout();
                 Assert.True(mainViewModel.HasSpeakers);
                 Assert.False(mainViewModel.HasNoSpeakers);
                 Assert.Single(mainViewModel.Speakers);
+                Assert.Contains(mainViewModel.PlaySegmentActionLabel, new[] { "播放", "Play" });
+                var transcriptSegments = Assert.IsType<ListBox>(mainWindow.FindName("TranscriptSegmentsList"));
+                var segmentItem = Assert.IsAssignableFrom<FrameworkElement>(transcriptSegments.ItemTemplate.LoadContent());
+                segmentItem.DataContext = firstSegment;
+                segmentItem.Measure(new Size(430, double.PositiveInfinity));
+                segmentItem.Arrange(new Rect(0, 0, 430, segmentItem.DesiredSize.Height));
+                segmentItem.UpdateLayout();
+                var playButton = FindVisualDescendant<Button>(
+                    segmentItem,
+                    button => AutomationProperties.GetAutomationId(button) == "SegmentPlayButton");
+                var segmentEditor = FindVisualDescendant<TextBox>(
+                    segmentItem,
+                    textBox => AutomationProperties.GetAutomationId(textBox) == "SegmentTextEditor");
+                var playbackContent = Assert.IsType<Grid>(playButton.Content);
+                var playbackLabels = playbackContent.Children.OfType<TextBlock>().ToArray();
+                var actionBinding = playbackLabels
+                    .Select(textBlock => BindingOperations.GetBinding(textBlock, TextBlock.TextProperty))
+                    .Single(binding => binding?.Path?.Path == $"DataContext.{nameof(MainWindowViewModel.PlaySegmentActionLabel)}");
+                var timeBinding = playbackLabels
+                    .Select(textBlock => BindingOperations.GetBinding(textBlock, TextBlock.TextProperty))
+                    .Single(binding => binding?.Path?.Path == nameof(TranscriptSegment.Start));
+                Assert.NotNull(actionBinding);
+                Assert.Contains("hh", timeBinding!.StringFormat, StringComparison.Ordinal);
+                Assert.Contains("ss", timeBinding.StringFormat, StringComparison.Ordinal);
+                Assert.InRange(playButton.ActualWidth, 112, 113);
+                Assert.True(segmentEditor.ActualHeight > 28);
+                var playOrigin = playButton.TranslatePoint(new Point(), segmentItem);
+                var editorOrigin = segmentEditor.TranslatePoint(new Point(), segmentItem);
+                Assert.True(
+                    playOrigin.X + playButton.ActualWidth <= editorOrigin.X,
+                    $"Playback button right edge {playOrigin.X + playButton.ActualWidth} overlapped editor left edge {editorOrigin.X}.");
+                mainViewModel.PlaySegmentCommand.ExecuteAsync(firstSegment).GetAwaiter().GetResult();
+                Assert.Equal(playbackPath, playbackService.CurrentPath);
+                Assert.Equal(firstSegment.Start, playbackService.Position);
+                Assert.True(mainViewModel.IsPlaybackActive);
+                mainViewModel.StopPlaybackCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+                Assert.False(mainViewModel.IsPlaybackActive);
+
+                File.Delete(playbackPath);
+                mainViewModel.PlaySegmentCommand.ExecuteAsync(firstSegment).GetAwaiter().GetResult();
+                Assert.Contains("playback.wav", mainViewModel.StatusMessage, StringComparison.OrdinalIgnoreCase);
 
                 LocalizationManager.Apply("zh-CN");
                 Assert.Equal("最小化", minimizeWindowButton.ToolTip);
@@ -268,6 +324,8 @@ public sealed class OnboardingRenderSmokeTests
                 {
                     SpeakerId = secondSpeaker.Id,
                     SpeakerName = secondSpeaker.Name,
+                    Start = new TimeSpan(1, 2, 18),
+                    End = new TimeSpan(1, 2, 24),
                     Text = "Second segment"
                 });
                 RefreshMainCollections(mainViewModel);
@@ -302,9 +360,12 @@ public sealed class OnboardingRenderSmokeTests
                 var previousSessionId = mainViewModel.Document.SessionId;
                 mainViewModel.NewSessionAsync().GetAwaiter().GetResult();
                 Assert.NotEqual(previousSessionId, mainViewModel.Document.SessionId);
-                Assert.DoesNotContain(
+                var savedRecordingSession = Assert.Single(
                     mainViewModel.SessionStore.ListSessionsAsync().GetAwaiter().GetResult(),
                     session => session.SessionId == previousSessionId);
+                Assert.Equal(1, savedRecordingSession.AudioTrackCount);
+                Assert.Equal(1, savedRecordingSession.MissingAudioTrackCount);
+                Assert.True(mainViewModel.SessionStore.DeleteAsync(previousSessionId).GetAwaiter().GetResult());
 
                 completed = true;
             }
@@ -355,6 +416,38 @@ public sealed class OnboardingRenderSmokeTests
         method.Invoke(viewModel, null);
     }
 
+    private sealed class FakeAudioPlaybackService : IAudioPlaybackService
+    {
+        public event EventHandler<AudioPlaybackStoppedEventArgs>? PlaybackStopped;
+
+        public bool IsPlaying { get; private set; }
+        public string? CurrentPath { get; private set; }
+        public TimeSpan Position { get; private set; }
+
+        public void Play(string path, TimeSpan position)
+        {
+            CurrentPath = path;
+            Position = position;
+            IsPlaying = true;
+        }
+
+        public void Stop()
+        {
+            if (!IsPlaying)
+            {
+                return;
+            }
+
+            IsPlaying = false;
+            PlaybackStopped?.Invoke(this, new AudioPlaybackStoppedEventArgs(null));
+        }
+
+        public void Dispose()
+        {
+            IsPlaying = false;
+        }
+    }
+
     private static void MarkModelInstalled(ModelCatalog catalog, ModelCardViewModel card)
     {
         foreach (var file in card.Model.Files)
@@ -386,6 +479,31 @@ public sealed class OnboardingRenderSmokeTests
         }
 
         throw new InvalidOperationException($"Button '{expectedContent}' was not found.");
+    }
+
+    private static T FindVisualDescendant<T>(DependencyObject root, Func<T, bool> predicate)
+        where T : DependencyObject
+    {
+        var match = EnumerateVisualDescendants<T>(root).FirstOrDefault(predicate);
+        return match ?? throw new InvalidOperationException($"Visual descendant '{typeof(T).Name}' was not found.");
+    }
+
+    private static IEnumerable<T> EnumerateVisualDescendants<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (var index = 0; index < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, index);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var descendant in EnumerateVisualDescendants<T>(child))
+            {
+                yield return descendant;
+            }
+        }
     }
 
     private static string FindRepositoryRoot()
